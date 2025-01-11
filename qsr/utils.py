@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torchvision.transforms as T
 from .model import SrCnn
+from .dataset_loading import StreamDataset
 
 
 def get_bw_difference(model, prev_high_res_frame, low_res_frame, high_res_frame):
@@ -22,44 +23,49 @@ def save_result(
     low_res_video_path_out,
     original_size=(1920, 1080),
     target_size=(1280, 720),
+    skip_frames=10
 ):
-    cap = cv2.VideoCapture(video_path_in)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     low_res = cv2.VideoWriter(low_res_video_path_out,
-                              fourcc, 25.0, target_size)
+                              fourcc, 25.0, original_size)
     writer = cv2.VideoWriter(video_path_out, fourcc, 25.0, original_size)
-    to_tensor = T.ToTensor()
-    while True:
-        ret1, frame_fullhd = cap.read()
-        if not ret1:
-            break
-        ret2, frame_hd_gt = cap.read()
-        if not ret2:
-            break
-        frame_fullhd = cv2.resize(
-            frame_fullhd, original_size, interpolation=cv2.INTER_AREA
-        )
-        frame_fullhd_rgb = cv2.cvtColor(frame_fullhd, cv2.COLOR_BGR2RGB)
-        frame_hd_gt = cv2.resize(
-            frame_hd_gt, original_size, interpolation=cv2.INTER_AREA
-        )
-        frame_hd = cv2.resize(frame_hd_gt, target_size,
-                              interpolation=cv2.INTER_AREA)
-        inp_fullhd = to_tensor(frame_fullhd_rgb).unsqueeze(0).to(device)
-        inp_hd = to_tensor(frame_hd).unsqueeze(0).to(device)
+    dataset = StreamDataset(
+        video_path_in,
+        original_size=original_size,
+        target_size=target_size,
+        skip_frames=skip_frames
+    )
+    model.eval()
+    for i, frames in enumerate(dataset):
+        if not i % skip_frames:
+            prev_high_res_frame, low_res_frame, _ = [
+                f.unsqueeze(0).to(device) for f in frames]
+        else:
+            low_res_frame, _ = [
+                f.unsqueeze(0).to(device) for f in frames if f is not None]
+        prev_high_res_input = prev_high_res_frame.to(device)
+        low_res_input = low_res_frame.to(device)
         with torch.no_grad():
-            pred = model(inp_fullhd, inp_hd)
+            pred = model(prev_high_res_input, low_res_input)
+        prev_high_res_frame = pred.detach()
         out = pred.squeeze(0).permute(1, 2, 0).cpu().numpy()
         out = np.clip(out, 0, 1)
         out = (out * 255).astype(np.uint8)
         out = cv2.cvtColor(out, cv2.COLOR_RGB2BGR)
-        low_res.write(frame_hd)
+        low_res_out = low_res_frame.squeeze(0).permute(1, 2, 0).cpu().numpy()
+        low_res_out = cv2.resize(
+            low_res_out, original_size, interpolation=cv2.INTER_AREA)
+        low_res_out = np.clip(low_res_out, 0, 1)
+        low_res_out = (low_res_out * 255).astype(np.uint8)
+        low_res_out = cv2.cvtColor(low_res_out, cv2.COLOR_RGB2BGR)
         writer.write(out)
-    cap.release()
+        low_res.write(low_res_out)
     writer.release()
+    low_res.release()
 
 
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = SrCnn.load("models/model_epoch20.pt").to(device)
-    save_result(model, "videos/video.mp4", "videos/video_out.mp4")
+    model = SrCnn.load("models/model_epoch10.pt").to(device)
+    save_result(model, video_path_in="videos/video.mp4", video_path_out="videos/video_out.mp4",
+                low_res_video_path_out="videos/low_res_video_out.mp4", target_size=(960, 540))

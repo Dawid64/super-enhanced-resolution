@@ -9,13 +9,13 @@ from .utils import get_bw_difference
 from .dataset_loading import StreamDataset
 
 
-def train_model(model_path='models/model_epoch15.pt', video_file='video.mp4',
-                device='auto', num_epochs=15, skip_frames=0, save_interval=10, num_frames=10):
+def train_model(video_file='video.mp4',
+                device='auto', num_epochs=15, skip_frames=0, save_interval=10, num_frames=10, original_size=(1920, 1080), target_size=(1280, 720)):
 
     if device == 'auto':
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    model = SrCnn.load(model_path).to(device)
+    model = SrCnn().to(device)
     criterion = nn.MSELoss()
     optimizer = optim.AdamW(model.parameters(), lr=0.001)
 
@@ -24,21 +24,28 @@ def train_model(model_path='models/model_epoch15.pt', video_file='video.mp4',
     for epoch in pbar:
         dataset = StreamDataset(
             video_file,
-            original_size=(1920, 1080),
-            target_size=(1280, 720),
+            original_size=original_size,
+            target_size=target_size,
             skip_frames=skip_frames
         )
+        model.train()
         for i, frames in enumerate(dataset):
-            if i == num_frames:
+            if num_frames is not None and i == num_frames:
                 break
-            prev_high_res_frame, low_res_frame, high_res_frame = [
-                f.unsqueeze(0).to(device) for f in frames]
+            if not i % skip_frames:
+                prev_high_res_frame, low_res_frame, high_res_frame = [
+                    f.unsqueeze(0).to(device) for f in frames]
+            else:
+                low_res_frame, high_res_frame = [
+                    f.unsqueeze(0).to(device) for f in frames if f is not None]
             optimizer.zero_grad()
             pred_high_res_frame = model(prev_high_res_frame, low_res_frame)
             loss = criterion(pred_high_res_frame, high_res_frame)
             loss.backward()
             optimizer.step()
             pbar.set_postfix({'loss': loss.item()})
+            prev_high_res_frame = pred_high_res_frame.detach()
+        model.eval()
         if epoch % save_interval == 0:
             difference = get_bw_difference(
                 model, prev_high_res_frame, low_res_frame, high_res_frame)
@@ -48,4 +55,5 @@ def train_model(model_path='models/model_epoch15.pt', video_file='video.mp4',
 
 
 if __name__ == '__main__':
-    train_model(num_epochs=4)
+    train_model(num_epochs=10, video_file='videos/video.mp4',
+                num_frames=None, skip_frames=10, target_size=(960, 540), save_interval=1)
