@@ -31,17 +31,17 @@ def train_model(model_path='models/model_epoch15.pt', video_file='video.mp4',
         for i, frames in enumerate(dataset):
             if i == num_frames:
                 break
-            frame_fullHD, frame_hd, frame_hd_gt = [
+            prev_high_res_frame, low_res_frame, high_res_frame = [
                 f.unsqueeze(0).to(device) for f in frames]
             optimizer.zero_grad()
-            frame_hd_pred = model(frame_fullHD, frame_hd)
-            loss = criterion(frame_hd_pred, frame_hd_gt)
+            pred_high_res_frame = model(prev_high_res_frame, low_res_frame)
+            loss = criterion(pred_high_res_frame, high_res_frame)
             loss.backward()
             optimizer.step()
             pbar.set_postfix({'loss': loss.item()})
         if epoch % save_interval == 0:
             difference = get_bw_difference(
-                model, frame_fullHD, frame_hd, frame_hd_gt)
+                model, prev_high_res_frame, low_res_frame, high_res_frame)
             cv2.imwrite(f'differences/difference_epoch{epoch}.png', difference)
             model.save(f'models/model_epoch{epoch}.pt')
             model.to(device)

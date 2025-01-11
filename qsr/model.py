@@ -6,13 +6,13 @@ import torch.nn.functional as F
 class SrCnn(nn.Module):
     def __init__(self):
         super(SrCnn, self).__init__()
-        self.fullHD_path = nn.Sequential(
+        self.prev_high_res = nn.Sequential(
             nn.Conv2d(3, 16, 3, padding=1),
             nn.ReLU(),
             nn.Conv2d(16, 8, 3, padding=1),
             nn.ReLU()
         )
-        self.hd_path = nn.Sequential(
+        self.low_res = nn.Sequential(
             nn.Conv2d(3, 16, 3, padding=1),
             nn.ReLU(),
             nn.Conv2d(16, 8, 3, padding=1),
@@ -24,15 +24,15 @@ class SrCnn(nn.Module):
             nn.Conv2d(16, 3, 3, padding=1)
         )
 
-    def forward(self, x_fullHD, x_hd):
-        if x_fullHD.dim() == 3:
-            x_fullHD = x_fullHD.unsqueeze(0)
-        if x_hd.dim() == 3:
-            x_hd = x_hd.unsqueeze(0)
+    def forward(self, x_prev_high_res, x_low_res):
+        if x_prev_high_res.dim() == 3:
+            x_prev_high_res = x_prev_high_res.unsqueeze(0)
+        if x_low_res.dim() == 3:
+            x_low_res = x_low_res.unsqueeze(0)
         x_hd_up = F.interpolate(
-            x_hd, size=x_fullHD.shape[2:], mode='bilinear', align_corners=False)
-        x1 = self.fullHD_path(x_fullHD)
-        x2 = self.hd_path(x_hd_up)
+            x_low_res, size=x_prev_high_res.shape[2:], mode='bilinear', align_corners=False)
+        x1 = self.prev_high_res(x_prev_high_res)
+        x2 = self.low_res(x_hd_up)
         return self.fusion(torch.cat([x1, x2], dim=1))
 
     def save(self, path):

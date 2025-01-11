@@ -14,23 +14,24 @@ class StreamDataset:
         cap = cv2.VideoCapture(self.video_path)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         while True:
-            ret1, frame_fullhd = cap.read()
+            ret1, prev_high_res_frame = cap.read()
             if not ret1:
                 break
             for _ in range(self.skip_frames):
                 cap.grab()
-            ret2, frame_hd_gt = cap.read()
+            ret2, high_res_frame = cap.read()
             if not ret2:
                 break
             for _ in range(self.skip_frames):
                 cap.grab()
-            frame_fullhd = cv2.resize(
-                frame_fullhd, self.original_size, interpolation=cv2.INTER_AREA)
-            frame_fullhd = cv2.cvtColor(frame_fullhd, cv2.COLOR_BGR2RGB)
-            frame_hd_gt = cv2.resize(
-                frame_hd_gt, self.original_size, interpolation=cv2.INTER_AREA)
-            frame_hd_gt = cv2.cvtColor(frame_hd_gt, cv2.COLOR_BGR2RGB)
-            frame_hd = cv2.resize(
-                frame_hd_gt, self.target_size, interpolation=cv2.INTER_AREA)
-            yield self.to_tensor(frame_fullhd), self.to_tensor(frame_hd), self.to_tensor(frame_hd_gt)
+            prev_high_res_frame = cv2.resize(
+                prev_high_res_frame, self.original_size, interpolation=cv2.INTER_AREA)
+            prev_high_res_frame = cv2.cvtColor(
+                prev_high_res_frame, cv2.COLOR_BGR2RGB)
+            high_res_frame = cv2.resize(
+                high_res_frame, self.original_size, interpolation=cv2.INTER_AREA)
+            high_res_frame = cv2.cvtColor(high_res_frame, cv2.COLOR_BGR2RGB)
+            low_res_frame = cv2.resize(
+                high_res_frame, self.target_size, interpolation=cv2.INTER_AREA)
+            yield self.to_tensor(prev_high_res_frame), self.to_tensor(low_res_frame), self.to_tensor(high_res_frame)
         cap.release()

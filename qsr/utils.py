@@ -5,10 +5,10 @@ import torchvision.transforms as T
 from .model import SrCnn
 
 
-def get_bw_difference(model, frame_fullHD, frame_hd, frame_hd_gt):
+def get_bw_difference(model, prev_high_res_frame, low_res_frame, high_res_frame):
     with torch.no_grad():
-        pred = model(frame_fullHD, frame_hd)
-    diff = (pred - frame_hd_gt).abs().mean(dim=1)
+        pred = model(prev_high_res_frame, low_res_frame)
+    diff = (pred - high_res_frame).abs().mean(dim=1)
     diff = diff.clamp(0, 1)
     diff_img = diff[0].cpu().numpy()
     diff_img = (diff_img * 255).astype(np.uint8)
@@ -19,11 +19,14 @@ def save_result(
     model,
     video_path_in,
     video_path_out,
+    low_res_video_path_out,
     original_size=(1920, 1080),
     target_size=(1280, 720),
 ):
     cap = cv2.VideoCapture(video_path_in)
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    low_res = cv2.VideoWriter(low_res_video_path_out,
+                              fourcc, 25.0, target_size)
     writer = cv2.VideoWriter(video_path_out, fourcc, 25.0, original_size)
     to_tensor = T.ToTensor()
     while True:
@@ -40,7 +43,8 @@ def save_result(
         frame_hd_gt = cv2.resize(
             frame_hd_gt, original_size, interpolation=cv2.INTER_AREA
         )
-        frame_hd = cv2.resize(frame_hd_gt, target_size, interpolation=cv2.INTER_AREA)
+        frame_hd = cv2.resize(frame_hd_gt, target_size,
+                              interpolation=cv2.INTER_AREA)
         inp_fullhd = to_tensor(frame_fullhd_rgb).unsqueeze(0).to(device)
         inp_hd = to_tensor(frame_hd).unsqueeze(0).to(device)
         with torch.no_grad():
@@ -49,6 +53,7 @@ def save_result(
         out = np.clip(out, 0, 1)
         out = (out * 255).astype(np.uint8)
         out = cv2.cvtColor(out, cv2.COLOR_RGB2BGR)
+        low_res.write(frame_hd)
         writer.write(out)
     cap.release()
     writer.release()
