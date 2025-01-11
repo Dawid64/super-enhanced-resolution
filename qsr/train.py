@@ -10,7 +10,7 @@ from .dataset_loading import StreamDataset
 
 
 def train_model(video_file='video.mp4',
-                device='auto', num_epochs=15, skip_frames=0, save_interval=10, num_frames=10, original_size=(1920, 1080), target_size=(1280, 720)):
+                device='auto', num_epochs=15, skip_frames=10, save_interval=10, num_frames=10, original_size=(1920, 1080), target_size=(1280, 720)):
 
     if device == 'auto':
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
