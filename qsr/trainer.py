@@ -10,14 +10,14 @@ from .model import SrCnn
 from .utils import SimpleListener
 
 class Trainer:
-    def __init__(self, device='auto'):
+    def __init__(self, device='auto', learning_rate:float=0.001):
         if device == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
         self.device = device
         self.criterion = nn.MSELoss()
         self.model = SrCnn().to(device)
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=0.001)
+        self.learning_rate = learning_rate
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate)
         self.history = {'loss': []}
         self.listener: SimpleListener = None
         self.last_loss = None
@@ -45,21 +45,24 @@ class Trainer:
         self.last_loss = sum(losses) / len(losses)
         
 
-    def train_model(self, video_file:str ='video.mp4', num_epochs=15, skip_frames=10,
+    def train_model(self, video_file='video.mp4', num_epochs=15, skip_frames=10,
                     save_interval=10, num_frames=10, original_size=(1920, 1080),
                     target_size=(1280, 720)) -> SrCnn:
+        mlflow.set_experiment("quantum_super_resolution_experiment")
+        with mlflow.start_run(run_name="QSR_Training"):
+            mlflow.log_param("video_file", video_file)
+            mlflow.log_param("num_epochs", num_epochs)
+            mlflow.log_param("skip_frames", skip_frames)
+            mlflow.log_param("num_frames", num_frames)
+            mlflow.log_param("original_size", original_size)
+            mlflow.log_param("target_size", target_size)
+            mlflow.log_param("optimizer", "AdamW")
+            mlflow.log_param("learning_rate", self.learning_rate)
+            mlflow.log_param("criterion", self.criterion.__class__.__name__)
 
-        pbar = tqdm(range(1, num_epochs+1), desc='Training',
-                    unit='epoch', postfix={'loss': 'inf'})
-
-        with mlflow.start_run(nested=True):
-            mlflow.log_params({"num_epochs": num_epochs,
-                               "skip_frames": skip_frames,
-                               "num_frames": num_frames,
-                               "original_size": original_size,
-                               "target_size": target_size,
-                               "optimizer": "AdamW",
-                               "learning_rate": 0.001})
+            pbar = tqdm(range(1, num_epochs + 1), desc='Training',
+                        unit='epoch', postfix={'loss': 'inf'})
+            
             for epoch in pbar:
                 dataset = StreamDataset(
                     video_file,
@@ -69,7 +72,7 @@ class Trainer:
                 )
                 self.model.train()
                 self.single_epoch(dataset, num_frames, skip_frames, pbar)
-                mlflow.log_metrics({"train_loss":self.last_loss}, step=epoch)
+                mlflow.log_metric("train_loss", self.last_loss, step=epoch)
 
                 if self.listener is not None:
                     self.listener.callback(epoch=epoch/num_epochs, history=self.history)
@@ -81,6 +84,12 @@ class Trainer:
                     mlflow.log_artifact(save_path, artifact_path="models")
                     mlflow.pytorch.log_model(self.model, artifact_path=f"models/model_epoch{epoch}")
                     self.model.to(self.device)
+
+            final_save_path = 'models/model_final.pt'
+            self.model.eval()
+            self.model.save(final_save_path)
+            mlflow.log_artifact(final_save_path, artifact_path="models")
+            mlflow.pytorch.log_model(self.model, artifact_path="models/model_final")
 
     def save(self, path):
         self.model.save(path)
