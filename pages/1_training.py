@@ -18,8 +18,7 @@ class SLListener(SimpleListener):
         if self.chart is None:
             self.df_losses = pd.DataFrame(columns=["loss"])
             self.chart = st.line_chart(self.df_losses, y="loss")
-        new_history = pd.DataFrame(
-            {key: values[self.index:] for key, values in history.items()})
+        new_history = pd.DataFrame({key: values[self.index:] for key, values in history.items()})
         self.chart.add_rows(new_history)
         self.index = len(list(history.values())[0])
 
@@ -48,7 +47,7 @@ if start_training:
     progress_bar = st.progress(0)
     trainer = Trainer()
     trainer.listener = SLListener(progress_bar)
-    trainer.train_model(tfile.name, num_epochs=num_epochs,
-                        skip_frames=skip_frames, save_interval=save_interval, num_frames=num_frames if num_frames != -1 else None)
+    trainer.train_model(tfile.name, num_epochs=num_epochs, skip_frames=skip_frames,
+                        save_interval=save_interval, num_frames=num_frames if num_frames != -1 else None)
 
     st.success("Training Completed!")

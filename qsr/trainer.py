@@ -26,14 +26,11 @@ class Trainer:
             if num_frames is not None and i == num_frames:
                 break
             if not i % skip_frames:
-                prev_high_res_frame, low_res_frame, high_res_frame = [
-                    f.unsqueeze(0).to(self.device) for f in frames]
+                prev_high_res_frame, low_res_frame, high_res_frame = [f.unsqueeze(0).to(self.device) for f in frames]
             else:
-                low_res_frame, high_res_frame = [
-                    f.unsqueeze(0).to(self.device) for f in frames if f is not None]
+                low_res_frame, high_res_frame = [f.unsqueeze(0).to(self.device) for f in frames if f is not None]
             self.optimizer.zero_grad()
-            pred_high_res_frame = self.model(
-                prev_high_res_frame, low_res_frame)
+            pred_high_res_frame = self.model(prev_high_res_frame, low_res_frame)
             loss = self.criterion(pred_high_res_frame, high_res_frame)
             loss.backward()
             self.optimizer.step()
@@ -41,20 +38,13 @@ class Trainer:
             pbar.set_postfix({'loss': loss.item()})
             prev_high_res_frame = pred_high_res_frame.detach()
 
-    def train_model(self, video_file: str = 'video.mp4', num_epochs=15, skip_frames=10,
-                    save_interval=10, num_frames=10, original_size=(1920, 1080),
-                    target_size=(1280, 720)) -> SrCnn:
+    def train_model(self, video_file: str = 'video.mp4', num_epochs=15, skip_frames=10, save_interval=10, num_frames=10, original_size=(1920, 1080), target_size=(1280, 720)) -> SrCnn:
 
         pbar = tqdm(range(1, num_epochs+1), desc='Training',
                     unit='epoch', postfix={'loss': 'inf'})
 
         for epoch in pbar:
-            dataset = StreamDataset(
-                video_file,
-                original_size=original_size,
-                target_size=target_size,
-                skip_frames=skip_frames
-            )
+            dataset = StreamDataset(video_file, original_size=original_size, target_size=target_size, skip_frames=skip_frames)
 
             self.model.train()
             self.single_epoch(dataset, num_frames, skip_frames, pbar)

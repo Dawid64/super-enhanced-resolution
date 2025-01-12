@@ -29,8 +29,7 @@ class SrCnn(nn.Module):
             x_prev_high_res = x_prev_high_res.unsqueeze(0)
         if x_low_res.dim() == 3:
             x_low_res = x_low_res.unsqueeze(0)
-        x_hd_up = F.interpolate(
-            x_low_res, size=x_prev_high_res.shape[2:], mode='bilinear', align_corners=False)
+        x_hd_up = F.interpolate(x_low_res, size=x_prev_high_res.shape[2:], mode='bilinear', align_corners=False)
         x1 = self.prev_high_res(x_prev_high_res)
         x2 = self.low_res(x_hd_up)
         return self.fusion(torch.cat([x1, x2], dim=1))

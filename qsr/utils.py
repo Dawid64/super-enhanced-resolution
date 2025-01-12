@@ -26,23 +26,15 @@ def save_result(
     skip_frames=10
 ):
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    low_res = cv2.VideoWriter(low_res_video_path_out,
-                              fourcc, 25.0, original_size)
+    low_res = cv2.VideoWriter(low_res_video_path_out, fourcc, 25.0, original_size)
     writer = cv2.VideoWriter(video_path_out, fourcc, 25.0, original_size)
-    dataset = StreamDataset(
-        video_path_in,
-        original_size=original_size,
-        target_size=target_size,
-        skip_frames=skip_frames
-    )
+    dataset = StreamDataset(video_path_in, original_size=original_size, target_size=target_size, skip_frames=skip_frames)
     model.eval()
     for i, frames in enumerate(dataset):
         if not i % skip_frames:
-            prev_high_res_frame, low_res_frame, _ = [
-                f.unsqueeze(0).to(device) for f in frames]
+            prev_high_res_frame, low_res_frame, _ = [f.unsqueeze(0).to(device) for f in frames]
         else:
-            low_res_frame, _ = [
-                f.unsqueeze(0).to(device) for f in frames if f is not None]
+            low_res_frame, _ = [f.unsqueeze(0).to(device) for f in frames if f is not None]
         prev_high_res_input = prev_high_res_frame.to(device)
         low_res_input = low_res_frame.to(device)
         with torch.no_grad():
@@ -53,8 +45,7 @@ def save_result(
         out = (out * 255).astype(np.uint8)
         out = cv2.cvtColor(out, cv2.COLOR_RGB2BGR)
         low_res_out = low_res_frame.squeeze(0).permute(1, 2, 0).cpu().numpy()
-        low_res_out = cv2.resize(
-            low_res_out, original_size, interpolation=cv2.INTER_AREA)
+        low_res_out = cv2.resize(low_res_out, original_size, interpolation=cv2.INTER_AREA)
         low_res_out = np.clip(low_res_out, 0, 1)
         low_res_out = (low_res_out * 255).astype(np.uint8)
         low_res_out = cv2.cvtColor(low_res_out, cv2.COLOR_RGB2BGR)
@@ -70,6 +61,7 @@ class SimpleListener:
 
     def callback(self, epoch, history):
         pass
+
 
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
