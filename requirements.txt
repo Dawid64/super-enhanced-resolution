@@ -1,8 +1,15 @@
+# Base ML tools
+numpy
+pandas
 torch
 torchvision
 opencv-python
-numpy
-pandas
+
+# ML Ops tools
+streamlit
+mlflow
+
+# Additional dependencies
 tqdm
 deprecated
-streamlit
+pytest
