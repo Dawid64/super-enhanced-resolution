@@ -20,9 +20,4 @@ if uploaded_file is not None:
     upscaled_video_path = "videos/video.mp4"
 
     with open(upscaled_video_path, "rb") as f:
-        st.download_button(
-            label="Download Upscaled Video",
-            data=f,
-            file_name="upscaled_result.mp4",
-            mime="video/mp4"
-        )
+        st.download_button(label="Download Upscaled Video", data=f, file_name="upscaled_result.mp4", mime="video/mp4")
