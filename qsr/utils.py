@@ -64,6 +64,13 @@ def save_result(
     low_res.release()
 
 
+class SimpleListener:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def callback(self, epoch, history):
+        pass
+
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = SrCnn.load("models/model_epoch10.pt").to(device)

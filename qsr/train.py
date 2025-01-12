@@ -10,7 +10,7 @@ from .dataset_loading import StreamDataset
 
 def train_model(video_file:str ='video.mp4', device='auto', num_epochs=15, skip_frames=10,
                 save_interval=10, num_frames=10, original_size=(1920, 1080),
-                target_size=(1280, 720), stpbar=None) -> SrCnn:
+                target_size=(1280, 720)) -> SrCnn:
 
     if device == 'auto':
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -21,8 +21,6 @@ def train_model(video_file:str ='video.mp4', device='auto', num_epochs=15, skip_
 
     pbar = tqdm(range(1, num_epochs+1), desc='Training',
                 unit='epoch', postfix={'loss': 'inf'})
-    if stpbar is not None:
-        stpbar.progress(0)
     for epoch in pbar:
         dataset = StreamDataset(
             video_file,
@@ -48,8 +46,7 @@ def train_model(video_file:str ='video.mp4', device='auto', num_epochs=15, skip_
             pbar.set_postfix({'loss': loss.item()})
             prev_high_res_frame = pred_high_res_frame.detach()
         model.eval()
-        if stpbar is not None:
-            stpbar.progress((epoch+1)/num_epochs)
+
         if epoch % save_interval == 0:
             difference = get_bw_difference(
                 model, prev_high_res_frame, low_res_frame, high_res_frame)

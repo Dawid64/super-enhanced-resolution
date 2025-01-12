@@ -3,7 +3,23 @@ import time
 import numpy as np
 import pandas as pd
 import tempfile
-from qsr.train import train_model
+from qsr.trainer import Trainer
+from qsr.utils import SimpleListener
+
+class SLListener(SimpleListener):
+    def __init__(self, stpbar):
+        self.stpbar = stpbar
+        self.chart = None
+        self.index = 0
+
+    def callback(self, epoch, history):
+        self.stpbar.progress(epoch)
+        if self.chart is None:
+            self.df_losses = pd.DataFrame(columns=["loss"])
+            self.chart = st.line_chart(self.df_losses, y="loss")
+        new_history = pd.DataFrame({key: values[self.index:] for key, values in history.items()})
+        self.chart.add_rows(new_history)
+        self.index = len(list(history.values())[0])
 
 st.title("Quantum Super Resolution")
 
@@ -16,10 +32,8 @@ if start_training:
     tfile.write(uploaded_file.read())
     st.write("Training started...")
     progress_bar = st.progress(0)
-    train_model(tfile.name, stpbar=progress_bar)
-
-    losses = np.linspace(1.0, 0.1, 100)
-    df_losses = pd.DataFrame({"step": range(len(losses)), "loss": losses})
-    st.line_chart(df_losses, x="step", y="loss")
+    trainer = Trainer()
+    trainer.listener = SLListener(progress_bar)
+    trainer.train_model(tfile.name)
     
     st.success("Training Completed!")
