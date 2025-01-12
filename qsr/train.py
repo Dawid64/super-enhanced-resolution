@@ -1,3 +1,4 @@
+from deprecated import deprecated
 import cv2
 import torch
 import torch.nn as nn
@@ -8,6 +9,8 @@ from .model import SrCnn
 from .utils import get_bw_difference
 from .dataset_loading import StreamDataset
 
+
+@deprecated
 def train_model(video_file:str ='video.mp4', device='auto', num_epochs=15, skip_frames=10,
                 save_interval=10, num_frames=10, original_size=(1920, 1080),
                 target_size=(1280, 720)) -> SrCnn:

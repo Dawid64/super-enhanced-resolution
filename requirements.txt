@@ -4,3 +4,5 @@ opencv-python
 numpy
 pandas
 tqdm
+deprecated
+streamlit
