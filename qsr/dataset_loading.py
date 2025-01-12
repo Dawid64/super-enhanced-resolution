@@ -10,6 +10,12 @@ class StreamDataset:
         self.to_tensor = T.ToTensor()
         self.skip_frames = skip_frames
 
+    def get_video_length(self):
+        cap = cv2.VideoCapture(self.video_path)
+        length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap.release()
+        return length
+
     def __iter__(self):
         cap = cv2.VideoCapture(self.video_path)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
