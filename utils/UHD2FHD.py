@@ -13,7 +13,7 @@ def resize_videos(input_dir: str = 'videos/UHD', output_dir: str = 'videos/FHD',
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         output_path = f"{output_dir}/{video_path.split('/')[-1]}"
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        writer = cv2.VideoWriter(output_path, fourcc, 25.0, output_resolution)
+        writer = cv2.VideoWriter(output_path, fourcc, 60.0, output_resolution)
         while True:
             ret1, frame_before = cap.read()
             if not ret1:
