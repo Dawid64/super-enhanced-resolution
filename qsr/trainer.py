@@ -11,7 +11,7 @@ from .utils import SimpleListener
 
 
 class Trainer:
-    def __init__(self, device='auto', learning_rate:float=0.001):
+    def __init__(self, device='auto', learning_rate: float = 0.001):
         if device == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.device = device
@@ -42,7 +42,6 @@ class Trainer:
             pbar.set_postfix({'loss': loss.item()})
             prev_high_res_frame = pred_high_res_frame.detach()
         self.last_loss = sum(losses) / len(losses)
-        
 
     def train_model(self, video_file='video.mp4', num_epochs=15, skip_frames=10,
                     save_interval=10, num_frames=10, original_size=(1920, 1080),
@@ -61,7 +60,7 @@ class Trainer:
 
             pbar = tqdm(range(1, num_epochs + 1), desc='Training',
                         unit='epoch', postfix={'loss': 'inf'})
-            
+
             for epoch in pbar:
                 dataset = StreamDataset(
                     video_file,
@@ -90,14 +89,14 @@ class Trainer:
                 if epoch % save_interval == 0:
                     self.model.eval()
                     save_path = f'models/model_epoch{epoch}.pt'
-                    self.model.save(save_path)
+                    self.save(save_path)
                     mlflow.log_artifact(save_path, artifact_path="models")
                     mlflow.pytorch.log_model(self.model, artifact_path=f"models/model_epoch{epoch}")
                     self.model.to(self.device)
 
             final_save_path = 'models/model_final.pt'
             self.model.eval()
-            self.model.save(final_save_path)
+            self.save(final_save_path)
             mlflow.log_artifact(final_save_path, artifact_path="models")
             mlflow.pytorch.log_model(self.model, artifact_path="models/model_final")
 
