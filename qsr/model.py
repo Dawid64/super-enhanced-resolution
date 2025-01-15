@@ -48,7 +48,7 @@ class SrCNN2(nn.Module):
     def __init__(self, upscale_factor=1.5):
         super(SrCNN2, self).__init__()
         self.conv1 = nn.Conv2d(6, 64, kernel_size=3, padding=1)
-        # self.conv2 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, padding=1)
         self.up = nn.Upsample(scale_factor=upscale_factor, mode='bilinear', align_corners=False)
         self.conv3 = nn.Conv2d(64, 32, kernel_size=3, padding=1)
         self.conv4 = nn.Conv2d(32, 3, kernel_size=3, padding=1)
@@ -57,7 +57,7 @@ class SrCNN2(nn.Module):
         x = torch.cat([prev_frame, curr_frame], dim=1)
         
         x = F.relu(self.conv1(x))
-        # x = F.relu(self.conv2(x))
+        x = F.relu(self.conv2(x))
         x = self.up(x)
         
         x = F.relu(self.conv3(x))
