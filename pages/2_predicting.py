@@ -1,7 +1,9 @@
 import streamlit as st
 import time
 
+st.set_page_config(layout="wide")
 st.title("Quantum Super Resolution")
+
 
 uploaded_file = st.file_uploader("Upload an HD video (MP4/MOV)", type=["mp4", "mov"])
 

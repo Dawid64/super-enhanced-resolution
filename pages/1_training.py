@@ -21,6 +21,7 @@ class SLListener(SimpleListener):
         self.index = len(list(history.values())[0])
 
 
+st.set_page_config(layout="wide")
 st.title("Quantum Super Resolution")
 
 optimizers = ['AdamW', 'Adagrad', 'SGD']
