@@ -1,3 +1,4 @@
+from typing import Dict, Literal
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -9,19 +10,25 @@ from .dataset_loading import StreamDataset
 from .model import SrCnn
 from .utils import SimpleListener
 
+OPTIMIZER: Dict[Literal['AdamW', 'Adagrad', 'SGD'], optim.Optimizer] = {
+    'AdamW': optim.AdamW,
+    'Adagrad': optim.Adagrad,
+    'SGD': optim.SGD
+}
 
 class Trainer:
-    def __init__(self, device='auto', learning_rate: float = 0.001):
+    def __init__(self, device='auto', learning_rate: float = 0.001, optimizer:Literal['AdamW', 'Adagrad', 'SGD'] = 'AdamW'):
         if device == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.device = device
         self.criterion = nn.MSELoss()
         self.model = SrCnn().to(device)
         self.learning_rate = learning_rate
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate)
+        self.optimizer = OPTIMIZER[optimizer](self.model.parameters(), lr=learning_rate)
         self.history = {'loss': []}
         self.listener: SimpleListener = None
         self.last_loss = None
+        self.save_interval = 10
 
     def single_epoch(self, dataset, num_frames, skip_frames, pbar):
         losses = []
@@ -44,7 +51,7 @@ class Trainer:
         self.last_loss = sum(losses) / len(losses)
 
     def train_model(self, video_file='video.mp4', num_epochs=15, skip_frames=10,
-                    save_interval=10, num_frames=10, original_size=(1920, 1080),
+                    num_frames=10, original_size=(1920, 1080),
                     target_size=(1280, 720)) -> SrCnn:
         mlflow.set_experiment("quantum_super_resolution_experiment")
         with mlflow.start_run(run_name="QSR_Training"):
@@ -54,51 +61,31 @@ class Trainer:
             mlflow.log_param("num_frames", num_frames)
             mlflow.log_param("original_size", original_size)
             mlflow.log_param("target_size", target_size)
-            mlflow.log_param("optimizer", "AdamW")
+            mlflow.log_param("optimizer", self.optimizer.__class__.__name__)
             mlflow.log_param("learning_rate", self.learning_rate)
             mlflow.log_param("criterion", self.criterion.__class__.__name__)
 
             pbar = tqdm(range(1, num_epochs + 1), desc='Training',
                         unit='epoch', postfix={'loss': 'inf'})
 
+
             for epoch in pbar:
-                dataset = StreamDataset(
-                    video_file,
-                    original_size=original_size,
-                    target_size=target_size,
-                    skip_frames=skip_frames
-                )
+                if self.listener is not None:
+                    self.listener.callback(epoch=epoch/num_epochs, history=self.history)
+                    
+                    if epoch % self.save_interval == 0:
+                        save_path = f'models/model_epoch{epoch}.pt'
+                        self.model.eval()
+                        self.save(save_path)
+                        mlflow.log_artifact(save_path, artifact_path="models")
+                        mlflow.pytorch.log_model(self.model, artifact_path=f"models/model_epoch{epoch}")
+                        self.model.to(self.device)
+                    
+                dataset = StreamDataset(video_file, original_size=original_size, target_size=target_size, skip_frames=skip_frames)
+                
                 self.model.train()
                 self.single_epoch(dataset, num_frames, skip_frames, pbar)
                 mlflow.log_metric("train_loss", self.last_loss, step=epoch)
-
-    def train_model(self, video_file: str = 'video.mp4', num_epochs=15, skip_frames=10, save_interval=10, num_frames=10, original_size=(1920, 1080), target_size=(1280, 720)) -> SrCnn:
-
-        pbar = tqdm(range(1, num_epochs+1), desc='Training',
-                    unit='epoch', postfix={'loss': 'inf'})
-
-        for epoch in pbar:
-            dataset = StreamDataset(video_file, original_size=original_size, target_size=target_size, skip_frames=skip_frames)
-
-            self.model.train()
-            self.single_epoch(dataset, num_frames, skip_frames, pbar)
-
-            if self.listener is not None:
-                self.listener.callback(epoch=epoch/num_epochs, history=self.history)
-
-                if epoch % save_interval == 0:
-                    self.model.eval()
-                    save_path = f'models/model_epoch{epoch}.pt'
-                    self.save(save_path)
-                    mlflow.log_artifact(save_path, artifact_path="models")
-                    mlflow.pytorch.log_model(self.model, artifact_path=f"models/model_epoch{epoch}")
-                    self.model.to(self.device)
-
-            final_save_path = 'models/model_final.pt'
-            self.model.eval()
-            self.save(final_save_path)
-            mlflow.log_artifact(final_save_path, artifact_path="models")
-            mlflow.pytorch.log_model(self.model, artifact_path="models/model_final")
 
     def save(self, path):
         self.model.save(path)
