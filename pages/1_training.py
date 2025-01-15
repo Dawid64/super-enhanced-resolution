@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import tempfile
-from qsr.trainer import Trainer
+from qsr import model
+from qsr.trainer import Trainer, Trainer2
 from qsr.utils import SimpleListener
 
 
@@ -28,17 +29,22 @@ optimizers = ['AdamW', 'Adagrad', 'SGD']
 loss = ['MSE', 'PNSR', 'DSSIM']
 
 start_training = st.button("Start Training")
-cols = st.columns(5)
-with cols[0]:
-    num_epochs = st.number_input("Number of epochs", value=10)
-with cols[1]:
+
+row_cols1 = st.columns(3)
+with row_cols1[0]:
+    model = st.selectbox("Model", ["SrCnn", "SrCNN2"])
+with row_cols1[1]:
     optimizer = st.selectbox("Optimizer", optimizers)
-with cols[2]:
+with row_cols1[2]:
     loss = st.selectbox("Loss", loss)
-with cols[3]:
-    skip_frames = st.number_input("Skip frames", value=10)
-with cols[4]:
+
+row_cols2 = st.columns(3)
+with row_cols2[0]:
+    num_epochs = st.number_input("Number of epochs", value=10)
+with row_cols2[1]:
     num_frames = st.number_input("Number of frames to train on, -1 for full video", value=-1)
+with row_cols2[2]:
+    skip_frames = st.number_input("Skip frames", value=10)
 
 uploaded_file = st.file_uploader(
     "Upload a FHD video (MP4/MOV)", type=["mp4", "mov"])
@@ -48,7 +54,7 @@ if start_training and uploaded_file is not None:
     tfile.write(uploaded_file.read())
     st.write("Training started...")
     progress_bar = st.progress(0)
-    trainer = Trainer(optimizer=optimizer, loss=loss)
+    trainer = Trainer(optimizer=optimizer, loss=loss) if model == "SrCnn" else Trainer2(optimizer=optimizer, loss=loss)
     trainer.listener = SLListener(progress_bar)
     trainer.train_model(tfile.name, num_epochs=num_epochs, skip_frames=skip_frames,
                         num_frames=num_frames if num_frames != -1 else None)
