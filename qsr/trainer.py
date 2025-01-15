@@ -9,9 +9,6 @@ import mlflow.pytorch
 from .dataset_loading import StreamDataset, NewStreamDataset
 from .model import SrCnn, SrCNN2
 from .utils import SimpleListener
-import torchvision.transforms.functional as F
-import cv2
-import numpy as np
 from piqa.ssim import ssim, gaussian_kernel
 
 OPTIMIZER: Dict[Literal['AdamW', 'Adagrad', 'SGD'], optim.Optimizer] = {
@@ -139,8 +136,8 @@ class Trainer:
 
 
 class Trainer2(Trainer):
-    def __init__(self, device='auto', learning_rate=0.001, optimizer='AdamW', skip_frames=None):
-        super().__init__(device, learning_rate, optimizer)
+    def __init__(self, device='auto', learning_rate=0.001, optimizer='AdamW', skip_frames=None, loss: Literal['MSE', 'PNSR', 'DSSIM'] = 'MSE'):
+        super().__init__(device, learning_rate, optimizer, loss)
         self.dataset_format = NewStreamDataset
         self.run_name = "QSR_Training2"
         self.model = SrCNN2().to(self.device)

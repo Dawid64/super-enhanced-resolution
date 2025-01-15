@@ -48,12 +48,13 @@ class StreamDataset:
             i += 1
         cap.release()
 
+
 class NewStreamDataset(IterableDataset):
     """
     A streaming dataset that reads frames from a video file in sequence.
     It generates either a triple (prev_high_res, low_res, high_res) or
     a pair (low_res, high_res) depending on the frame index and skip_frames.
-    
+
     Args:
         video_file (str): Path to the video file.
         original_size (tuple): Desired high-res frame size, e.g., (1920, 1080).
@@ -61,12 +62,19 @@ class NewStreamDataset(IterableDataset):
         skip_frames (int): Skip interval used in the trainer. If i % skip_frames == 0,
                            the dataset will yield a triple; otherwise a pair.
     """
+
     def __init__(self, video_file, original_size=(1920, 1080),
                  target_size=(1280, 720), **kwargs):
         super().__init__()
         self.video_file = video_file
         self.original_size = original_size
         self.target_size = target_size
+
+    def get_video_length(self):
+        cap = cv2.VideoCapture(self.video_file)
+        length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap.release()
+        return length
 
     def __iter__(self):
         cap = cv2.VideoCapture(self.video_file)
@@ -91,10 +99,10 @@ class NewStreamDataset(IterableDataset):
 
             low_res_frame = cv2.resize(frame, self.target_size)
             low_res_frame = np.transpose(low_res_frame, (2, 0, 1)).astype(np.float32) / 255.0
-            
+
             yield (
-                torch.from_numpy(prev_frame), 
-                torch.from_numpy(low_res_frame), 
+                torch.from_numpy(prev_frame),
+                torch.from_numpy(low_res_frame),
                 torch.from_numpy(high_res_frame)
             )
 
