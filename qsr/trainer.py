@@ -147,7 +147,7 @@ class Trainer2(Trainer):
         self.learning_rate = learning_rate
         self.optimizer = OPTIMIZER[optimizer](self.model.parameters(), lr=learning_rate)
 
-    def single_epoch(self, dataset, num_frames, pbar, skip_frames=None, num_epoch=10):
+    def single_epoch(self, dataset, num_frames, skip_frames=None, num_epoch=10):
 
         losses = []
         pbar = tqdm(range(num_frames), desc=f'Epoch {num_epoch}', unit='frame', leave=True)
@@ -169,6 +169,6 @@ class Trainer2(Trainer):
 
 
 if __name__ == '__main__':
-    trainer = Trainer(optimizer='SGD')
+    trainer = Trainer2(optimizer='SGD')
     trainer.train_model(num_epochs=2, video_file='Inter4k/60fps/small/1.mp4', num_frames=120)
     trainer.save('models/model.pt')
