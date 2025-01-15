@@ -12,6 +12,7 @@ from .utils import SimpleListener
 import torchvision.transforms.functional as F
 import cv2
 import numpy as np
+from piqa.ssim import ssim, gaussian_kernel
 
 OPTIMIZER: Dict[Literal['AdamW', 'Adagrad', 'SGD'], optim.Optimizer] = {
     'AdamW': optim.AdamW,
@@ -19,12 +20,40 @@ OPTIMIZER: Dict[Literal['AdamW', 'Adagrad', 'SGD'], optim.Optimizer] = {
     'SGD': optim.SGD
 }
 
+
+def PSNR(y_pred, y_gt):
+    return 10 * torch.log10(1 / (nn.MSELoss()(y_pred, y_gt)+1e-8))
+
+
+class PNSR(nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def forward(self, y_pred, y_gt):
+        return 1/PSNR(y_pred, y_gt)
+
+
+class DSSIM(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, y_pred, y_gt):
+        return 1 - ssim(y_pred, y_gt, kernel=gaussian_kernel(7).repeat(3, 1, 1).to(y_pred.device), channel_avg=True)[0]
+
+
+LOSS: Dict[Literal['MSE', 'PNSR', 'DSSIM'], nn.Module] = {
+    'MSE': nn.MSELoss,
+    'PNSR': PNSR,
+    'DSSIM': DSSIM
+}
+
+
 class Trainer:
-    def __init__(self, device='auto', learning_rate: float = 0.001, optimizer:Literal['AdamW', 'Adagrad', 'SGD'] = 'AdamW'):
+    def __init__(self, device='auto', learning_rate: float = 0.001, optimizer: Literal['AdamW', 'Adagrad', 'SGD'] = 'AdamW', loss: Literal['MSE', 'PNSR', 'DSSIM'] = 'MSE'):
         if device == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.device = device
-        self.criterion = nn.MSELoss()
+        self.criterion = LOSS[loss]()
         self.model = SrCnn().to(device)
         self.learning_rate = learning_rate
         self.optimizer = OPTIMIZER[optimizer](self.model.parameters(), lr=learning_rate)
@@ -98,7 +127,7 @@ class Trainer:
                     additional['skip_frames'] = skip_frames
 
                 dataset = self.dataset_format(video_file, original_size=original_size, target_size=target_size, **additional)
-                
+
                 self.model.train()
                 self.single_epoch(dataset, num_frames, **additional)
                 pbar.set_postfix({'loss': self.last_loss})
@@ -108,8 +137,9 @@ class Trainer:
         self.model.save(path)
         self.model.to(self.device)
 
+
 class Trainer2(Trainer):
-    def __init__(self, device='auto', learning_rate = 0.001, optimizer = 'AdamW', skip_frames = None):
+    def __init__(self, device='auto', learning_rate=0.001, optimizer='AdamW', skip_frames=None):
         super().__init__(device, learning_rate, optimizer)
         self.dataset_format = NewStreamDataset
         self.run_name = "QSR_Training2"
@@ -117,7 +147,7 @@ class Trainer2(Trainer):
         self.learning_rate = learning_rate
         self.optimizer = OPTIMIZER[optimizer](self.model.parameters(), lr=learning_rate)
 
-    def single_epoch(self, dataset, num_frames, pbar, skip_frames=None, num_epoch = 10):
+    def single_epoch(self, dataset, num_frames, pbar, skip_frames=None, num_epoch=10):
 
         losses = []
         pbar = tqdm(range(num_frames), desc=f'Epoch {num_epoch}', unit='frame', leave=True)

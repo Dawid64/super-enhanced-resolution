@@ -25,16 +25,19 @@ st.set_page_config(layout="wide")
 st.title("Quantum Super Resolution")
 
 optimizers = ['AdamW', 'Adagrad', 'SGD']
+loss = ['MSE', 'PNSR', 'DSSIM']
 
 start_training = st.button("Start Training")
-cols = st.columns(4)
+cols = st.columns(5)
 with cols[0]:
     num_epochs = st.number_input("Number of epochs", value=10)
 with cols[1]:
     optimizer = st.selectbox("Optimizer", optimizers)
 with cols[2]:
-    skip_frames = st.number_input("Skip frames", value=10)
+    loss = st.selectbox("Loss", loss)
 with cols[3]:
+    skip_frames = st.number_input("Skip frames", value=10)
+with cols[4]:
     num_frames = st.number_input("Number of frames to train on, -1 for full video", value=-1)
 
 uploaded_file = st.file_uploader(
@@ -45,7 +48,7 @@ if start_training and uploaded_file is not None:
     tfile.write(uploaded_file.read())
     st.write("Training started...")
     progress_bar = st.progress(0)
-    trainer = Trainer(optimizer='SGD')
+    trainer = Trainer(optimizer=optimizer, loss=loss)
     trainer.listener = SLListener(progress_bar)
     trainer.train_model(tfile.name, num_epochs=num_epochs, skip_frames=skip_frames,
                         num_frames=num_frames if num_frames != -1 else None)
