@@ -13,3 +13,4 @@ mlflow
 tqdm
 deprecated
 pytest
+snakeviz
