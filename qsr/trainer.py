@@ -75,14 +75,16 @@ class Trainer:
                               "learning_rate": self.learning_rate,
                               "criterion": self.criterion.__class__.__name__})
 
+            if num_frames is None:
+                num_frames = int(self.dataset_format(video_file).get_video_length()*(1-1/skip_frames))
+
             pbar = tqdm(range(1, num_epochs + 1), desc='Training',
                         unit='epoch', postfix={'loss': 'inf'})
-
 
             for epoch in pbar:
                 if self.listener is not None:
                     self.listener.callback(epoch=epoch/num_epochs, history=self.history)
-                    
+
                     if epoch % self.save_interval == 0:
                         save_path = f'models/model_epoch{epoch}.pt'
                         self.model.eval()
