@@ -4,6 +4,7 @@ pandas
 torch
 torchvision
 opencv-python
+piqa
 
 # ML Ops tools
 streamlit
