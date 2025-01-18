@@ -86,7 +86,7 @@ class NewStreamDataset(IterableDataset):
             cap.release()
             return
 
-        prev_frame = cv2.resize(prev_frame, self.target_size)
+        prev_frame = cv2.resize(prev_frame, self.target_size, interpolation=cv2.INTER_AREA)
         prev_frame = np.transpose(prev_frame, (2, 0, 1)).astype(np.float32) / 255.0
 
         i = 0
@@ -94,10 +94,10 @@ class NewStreamDataset(IterableDataset):
             ret, frame = cap.read()
             if not ret:
                 break
-            high_res_frame = cv2.resize(frame, self.original_size)
+            high_res_frame = cv2.resize(frame, self.original_size, interpolation=cv2.INTER_AREA)
             high_res_frame = np.transpose(high_res_frame, (2, 0, 1)).astype(np.float32) / 255.0
 
-            low_res_frame = cv2.resize(frame, self.target_size)
+            low_res_frame = cv2.resize(frame, self.target_size, interpolation=cv2.INTER_AREA)
             low_res_frame = np.transpose(low_res_frame, (2, 0, 1)).astype(np.float32) / 255.0
 
             yield (
