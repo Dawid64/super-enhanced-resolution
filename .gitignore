@@ -16,3 +16,5 @@ models
 differences
 mlruns
 Inter4K/60fps/UHD
+
+*.mp4
