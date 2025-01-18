@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from torch.utils.data import IterableDataset
 import torchvision.transforms as T
+import ffmpegcv
 
 
 class StreamDataset:
@@ -71,13 +72,15 @@ class NewStreamDataset(IterableDataset):
         self.target_size = target_size
 
     def get_video_length(self):
-        cap = cv2.VideoCapture(self.video_file)
-        length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        cap = ffmpegcv.VideoCaptureNV(self.video_file, pix_fmt='rgb24') if torch.cuda.is_available(
+        ) else ffmpegcv.VideoCapture(self.video_file)
+        length = len(cap)
         cap.release()
         return length
 
     def __iter__(self):
-        cap = cv2.VideoCapture(self.video_file)
+        cap = ffmpegcv.VideoCaptureNV(self.video_file, pix_fmt='rgb24') if torch.cuda.is_available(
+        ) else ffmpegcv.VideoCapture(self.video_file)
         if not cap.isOpened():
             print(f"Error opening video file: {self.video_file}")
             return

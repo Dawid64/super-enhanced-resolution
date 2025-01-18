@@ -6,6 +6,7 @@ from tqdm import tqdm
 import mlflow
 import mlflow.pytorch
 from .model import SrCNN2
+import ffmpegcv
 
 from qsr.utils import SimpleListener
 
@@ -26,14 +27,14 @@ class Upscaler:
         self.dataset_format = NewStreamDataset
         self.listener: SimpleListener = listener
         self.run_name = "QSR_Upscaling"
-        self.fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
     def _log_params(self, parameters: Dict):
         for key, value in parameters.items():
             mlflow.log_param(key, value)
 
     def upscale(self, video_file, num_frames=-1, skip_frames=10, fps=60.0, video_path_out="output.mp4"):
-        writer = cv2.VideoWriter(video_path_out, self.fourcc, fps, self.original_size)
+        writer = ffmpegcv.VideoWriterNV(file=video_path_out, codec='h264', fps=60.0, preset='slow', pix_fmt='rgb24') if self.device == 'cuda' else ffmpegcv.VideoWriter(
+            file=video_path_out, codec='h264', fps=60.0, preset='slow', pix_fmt='rgb24')
 
         dataset = self.dataset_format(video_file=video_file, original_size=self.original_size, target_size=self.target_size)
         if num_frames == -1:
@@ -54,7 +55,6 @@ class Upscaler:
                 out = pred_frame.squeeze(0).permute(1, 2, 0).cpu().numpy()
                 out = np.clip(out, 0, 1)
                 out = (out * 255).astype(np.uint8)
-                out = cv2.cvtColor(out, cv2.COLOR_RGB2BGR)
                 writer.write(out)
         cv2.destroyAllWindows()
         writer.release()

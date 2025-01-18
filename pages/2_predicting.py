@@ -2,8 +2,6 @@ import tempfile
 import streamlit as st
 from glob import glob
 
-from torch import nuclear_norm
-
 from qsr.utils import SimpleListener
 from qsr.predictor import Upscaler
 
@@ -45,6 +43,7 @@ if upscaling_button and uploaded_file is not None:
     output_res = (int(16/9*output_res), output_res)
     upscaler = Upscaler(f"models/{model}", listener=listener, original_size=output_res, target_size=input_res)
     upscaler.upscale(tfile.name, num_frames=-1, skip_frames=10, video_path_out=output_path)
+    st.success("Upscaling complete!")
     with open(output_path, "rb") as f:
         st.download_button(label="Download Upscaled Video", data=f, file_name="upscaled_result.mp4", mime="video/mp4")
-    st.success("Upscaling complete!")
+    st.video(output_path)
