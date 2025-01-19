@@ -33,10 +33,10 @@ class Upscaler:
             mlflow.log_param(key, value)
 
     def upscale(self, video_file, num_frames=-1, skip_frames=10, fps=60.0, video_path_out="output.mp4"):
-        writer = ffmpegcv.VideoWriterNV(file=video_path_out, codec='h264_nvenc', fps=60.0, preset='slow', pix_fmt='rgb24') if self.device == 'cuda' else ffmpegcv.VideoWriter(
-            file=video_path_out, codec='h264', fps=60.0, preset='slow', pix_fmt='rgb24')
-        baseline = ffmpegcv.VideoWriterNV(file="baseline.mp4", codec='h264_nvenc', fps=60.0, preset='slow', pix_fmt='rgb24') if self.device == 'cuda' else ffmpegcv.VideoWriter(
-            file="baseline.mp4", codec='h264', fps=60.0, preset='slow', pix_fmt='rgb24')
+        writer = ffmpegcv.VideoWriterNV(file=video_path_out, codec='h264_nvenc', fps=60.0, preset='p7', pix_fmt='rgb24') if self.device == 'cuda' else ffmpegcv.VideoWriter(
+            file=video_path_out, codec='h264', fps=60.0, preset='p7', pix_fmt='rgb24')
+        baseline = ffmpegcv.VideoWriterNV(file="baseline.mp4", codec='h264_nvenc', fps=60.0, preset='p7', pix_fmt='rgb24') if self.device == 'cuda' else ffmpegcv.VideoWriter(
+            file="baseline.mp4", codec='h264', fps=60.0, preset='p7', pix_fmt='rgb24')
 
         dataset = self.dataset_format(video_file=video_file, original_size=self.original_size, target_size=self.target_size)
         if num_frames == -1:
