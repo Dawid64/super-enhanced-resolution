@@ -1,67 +1,44 @@
-from operator import index
-from pydoc import text
+from textwrap import indent
+from sklearn.model_selection import learning_curve
 import streamlit as st
 import pandas as pd
 import tempfile
-
-
+from qsr import model
 from qsr.trainer import MultiTrainer
 from qsr.utils import SimpleListener
 
 
 class SLListener(SimpleListener):
-    def __init__(self, epoch_bar, train_batch_bar, val_batch_bar, video_loading_bar):
+    def __init__(self, epoch_bar, batch_bar, video_loading_bar, val_batch_bar=None):
         self.epoch_bar = epoch_bar
-        self.train_batch_bar = train_batch_bar
+        self.train_batch_bar = batch_bar
         self.val_batch_bar = val_batch_bar
         self.video_loading_bar = video_loading_bar
         self.train_chart = None
         self.val_chart = None
-        self.epoch_chart = None
         self.index = 0
 
     def epoch_callback(self, progress, history):
-        self.epoch_bar.progress(progress, text="Training (Epochs)")
-        self.train_batch_bar.progress(0, text="Training (Batches)")
-        self.val_batch_bar.progress(0, text="Validating (Batches)")
-        chart_cols = st.columns(2)
-
-        with chart_cols[0]:
-            if self.train_chart is None:
-                self.df_losses = pd.DataFrame(columns=["train_loss"])
-                self.train_chart = st.line_chart(self.df_losses, y="train_loss")
-        new_history = pd.DataFrame({"train_loss": history["train_loss"]})
-        self.train_chart.add_rows(new_history[self.index:])
-
-        with chart_cols[1]:
-            if self.val_chart is None:
-                self.df_losses = pd.DataFrame(columns=["val_loss"])
-                self.val_chart = st.line_chart(self.df_losses, y="val_loss")
-        new_history = pd.DataFrame({"val_loss": history["val_loss"]})
-        self.val_chart.add_rows(new_history[self.index:])
-
-        if self.epoch_chart is None:
-            self.df_losses = pd.DataFrame(columns=["epoch_loss"])
-            self.epoch_chart = st.line_chart(self.df_losses, y="epoch_loss")
-        new_history = pd.DataFrame({"epoch_loss": history["epoch_loss"]})
-        self.epoch_chart.add_rows(new_history[self.index:])
-
-        self.index = len(list(history.values())[0])
+        self.epoch_bar.progress(progress)
+        # if self.train_chart is None:
+        #    self.df_losses = pd.DataFrame(columns=["train_loss", "val_loss"])
+        #    self.train_chart = st.line_chart(self.df_losses, y="loss")
+        # new_history = pd.DataFrame({key: values[self.index:] for key, values in history.items()})
+        # self.train_chart.add_rows(new_history)
+        # self.index = len(list(history.values())[0])
 
     def train_batch_callback(self, progress, history):
-        self.train_batch_bar.progress(progress, text="Training (Batches)")
+        self.train_batch_bar.progress(progress)
 
     def val_batch_callback(self, progress, history):
-        self.val_batch_bar.progress(progress, text="Validating (Batches)")
+        self.val_batch_bar.progress(progress)
 
     def video_loading_callback(self, progress):
-        self.video_loading_bar.progress(progress, text="Loading videos")
-        if progress == 1:
-            self.video_loading_bar.empty()
+        self.video_loading_bar.progress(progress)
 
 
 st.set_page_config(layout="wide")
-st.title("Temporal Super Resolution")
+st.title("TemporalSuper Resolution")
 
 optimizers = ['AdamW', 'Adagrad', 'SGD']
 loss = ['MSE', 'PNSR', 'DSSIM']
@@ -78,7 +55,7 @@ with row_cols1[2]:
 
 row_cols2 = st.columns(3)
 with row_cols2[0]:
-    batch_size = st.number_input("Batch size", value=4)
+    bacth_size = st.number_input("Batch size", value=1)
 with row_cols2[1]:
     frames_back = st.number_input("Frames back", value=2)
 with row_cols2[2]:
@@ -102,17 +79,16 @@ if start_training and uploaded_file is not None:
     tfiles = [tempfile.NamedTemporaryFile(delete=False) for _ in uploaded_file]
     for tfile, file in zip(tfiles, uploaded_file):
         tfile.write(file.read())
+    st.write("Training started...")
+    epoch_bar = st.progress(0)
+    train_batch_bar = st.progress(0)
+    val_batch_bar = st.progress(0)
+    video_loading_bar = st.progress(0)
     low_res = (int(16/9*low_res), low_res)
     high_res = (int(16/9*high_res), high_res)
-
-    video_loading_bar = st.progress(0, text="Loading videos")
-    train_batch_bar = st.progress(0, text="Training (Batches)")
-    val_batch_bar = st.progress(0, text="Validating (Batches)")
-    epoch_bar = st.progress(0, text="Training (Epochs)")
-
     trainer = MultiTrainer(original_size=high_res, target_size=low_res, learning_rate=learning_rate, optimizer=optimizer,
                            loss=loss, frames_back=frames_back, frames_forward=frames_forward)
     trainer.listener = SLListener(epoch_bar, train_batch_bar, val_batch_bar, video_loading_bar)
-    trainer.train_model([tfile.name for tfile in tfiles], batch_size=batch_size, num_epochs=num_epochs)
+    trainer.train_model([tfile.name for tfile in tfiles], batch_size=bacth_size, num_epochs=num_epochs)
 
     st.success("Training Completed!")

@@ -80,8 +80,8 @@ class MultiTrainer:
         train_size = len(train_dataset)
         val_size = len(val_dataset)
 
-        train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
-        val_loader = DataLoader(val_dataset, batch_size=4, shuffle=True)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 
         with mlflow.start_run(run_name=self.run_name):
             self._log_params({"video_files": video_files,

@@ -20,7 +20,7 @@ class MultiVideoDataset(Dataset):
         pbar = tqdm(self.video_paths, desc="Loading videos")
         for i, video_path in enumerate(pbar):
             if listener:
-                listener.video_loading_callback((i + 1) / len(self.video_paths))
+                listener.video_loading_callback(i/len(self.video_paths))
             frames = []
             reader = ffmpegcv.VideoCaptureNV(video_path, pix_fmt='rgb24') if torch.cuda.is_available() else ffmpegcv.VideoCapture(video_path, pix_fmt='rgb24')
             while True:
