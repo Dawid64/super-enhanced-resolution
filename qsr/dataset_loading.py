@@ -1,9 +1,57 @@
+from math import pi
 import cv2
+from sympy import li
 import torch
 import numpy as np
-from torch.utils.data import IterableDataset
+from torch.utils.data import IterableDataset, Dataset, DataLoader, random_split
 import torchvision.transforms as T
 import ffmpegcv
+from numpy.lib.stride_tricks import sliding_window_view
+
+
+class MultiVideoDataset(Dataset):
+    def __init__(self, video_paths: list[str], original_size=(1920, 1080), target_size=(1280, 720), frames_back=2, frames_forward=2):
+        super().__init__()
+        self.video_paths = video_paths
+        self.original_size = original_size
+        self.target_size = target_size
+        self.frames_back = frames_back
+        self.frames_forward = frames_forward
+        self.frame_windows = np.array([])
+        for video_path in self.video_paths:
+            frames = []
+            reader = ffmpegcv.VideoCaptureNV(video_path, pix_fmt='rgb24') if torch.cuda.is_available() else ffmpegcv.VideoCapture(video_path, pix_fmt='rgb24')
+            while True:
+                ret, frame = reader.read()
+                if not ret:
+                    break
+                frames.append(frame)
+            reader.release()
+            frames = np.array(frames)
+            windows = sliding_window_view(frames, (frames_back + frames_forward + 1, *frames[0].shape)).squeeze()
+            self.frame_windows = np.concatenate([self.frame_windows, windows]) if self.frame_windows.size else windows
+
+    def __len__(self):
+        return len(self.frame_windows)
+
+    def __getitem__(self, idx):
+        frames = self.frame_windows[idx]
+        prev_frames = list(frames[:self.frames_back])
+        cur_frame = frames[self.frames_back]
+        next_frames = list(frames[self.frames_back + 1:])
+        for i in range(self.frames_back):
+            prev_frames[i] = cv2.resize(prev_frames[i], self.target_size, interpolation=cv2.INTER_AREA)
+            prev_frames[i] = torch.from_numpy(np.transpose(prev_frames[i], (2, 0, 1))).float() / 255.0
+        prev_frames = torch.from_numpy(np.array(prev_frames))
+        high_res_frame = cv2.resize(cur_frame, self.original_size, interpolation=cv2.INTER_AREA)
+        high_res_frame = torch.from_numpy(np.transpose(high_res_frame, (2, 0, 1))).float() / 255.0
+        low_res_frame = cv2.resize(cur_frame, self.target_size, interpolation=cv2.INTER_AREA)
+        low_res_frame = torch.from_numpy(np.transpose(low_res_frame, (2, 0, 1))).float() / 255.0
+        for i in range(self.frames_forward):
+            next_frames[i] = cv2.resize(next_frames[i], self.target_size, interpolation=cv2.INTER_AREA)
+            next_frames[i] = torch.from_numpy(np.transpose(next_frames[i], (2, 0, 1))).float() / 255.0
+        next_frames = torch.from_numpy(np.array(next_frames))
+        return ((prev_frames, low_res_frame, next_frames), high_res_frame)
 
 
 class StreamDataset:
@@ -73,14 +121,14 @@ class NewStreamDataset(IterableDataset):
 
     def get_video_length(self):
         cap = ffmpegcv.VideoCaptureNV(self.video_file, pix_fmt='rgb24') if torch.cuda.is_available(
-        ) else ffmpegcv.VideoCapture(self.video_file)
+        ) else ffmpegcv.VideoCapture(self.video_file, pix_fmt='rgb24')
         length = len(cap)
         cap.release()
         return length
 
     def __iter__(self):
         cap = ffmpegcv.VideoCaptureNV(self.video_file, pix_fmt='rgb24') if torch.cuda.is_available(
-        ) else ffmpegcv.VideoCapture(self.video_file)
+        ) else ffmpegcv.VideoCapture(self.video_file, pix_fmt='rgb24')
         if not cap.isOpened():
             print(f"Error opening video file: {self.video_file}")
             return
