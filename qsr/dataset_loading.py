@@ -1,16 +1,15 @@
-from math import pi
 import cv2
-from sympy import li
 import torch
 import numpy as np
 from torch.utils.data import IterableDataset, Dataset, DataLoader, random_split
 import torchvision.transforms as T
 import ffmpegcv
 from numpy.lib.stride_tricks import sliding_window_view
+from tqdm import tqdm
 
 
 class MultiVideoDataset(Dataset):
-    def __init__(self, video_paths: list[str], original_size=(1920, 1080), target_size=(1280, 720), frames_back=2, frames_forward=2):
+    def __init__(self, video_paths: list[str], original_size=(1920, 1080), target_size=(1280, 720), frames_back=2, frames_forward=2, listener=None):
         super().__init__()
         self.video_paths = video_paths
         self.original_size = original_size
@@ -18,7 +17,10 @@ class MultiVideoDataset(Dataset):
         self.frames_back = frames_back
         self.frames_forward = frames_forward
         self.frame_windows = np.array([])
-        for video_path in self.video_paths:
+        pbar = tqdm(self.video_paths, desc="Loading videos")
+        for i, video_path in enumerate(pbar):
+            if listener:
+                listener.video_loading_callback((i + 1) / len(self.video_paths))
             frames = []
             reader = ffmpegcv.VideoCaptureNV(video_path, pix_fmt='rgb24') if torch.cuda.is_available() else ffmpegcv.VideoCapture(video_path, pix_fmt='rgb24')
             while True:
@@ -42,7 +44,7 @@ class MultiVideoDataset(Dataset):
         for i in range(self.frames_back):
             prev_frames[i] = cv2.resize(prev_frames[i], self.target_size, interpolation=cv2.INTER_AREA)
             prev_frames[i] = torch.from_numpy(np.transpose(prev_frames[i], (2, 0, 1))).float() / 255.0
-        prev_frames = torch.from_numpy(np.array(prev_frames))
+        prev_frames = torch.concat(prev_frames, dim=0)
         high_res_frame = cv2.resize(cur_frame, self.original_size, interpolation=cv2.INTER_AREA)
         high_res_frame = torch.from_numpy(np.transpose(high_res_frame, (2, 0, 1))).float() / 255.0
         low_res_frame = cv2.resize(cur_frame, self.target_size, interpolation=cv2.INTER_AREA)
@@ -50,8 +52,12 @@ class MultiVideoDataset(Dataset):
         for i in range(self.frames_forward):
             next_frames[i] = cv2.resize(next_frames[i], self.target_size, interpolation=cv2.INTER_AREA)
             next_frames[i] = torch.from_numpy(np.transpose(next_frames[i], (2, 0, 1))).float() / 255.0
-        next_frames = torch.from_numpy(np.array(next_frames))
+        next_frames = torch.concat(next_frames, dim=0)
         return ((prev_frames, low_res_frame, next_frames), high_res_frame)
+
+
+if __name__ == "__main__":
+    dataset = MultiVideoDataset(["videos/HD/1.mp4", "videos/HD/2.mp4"])
 
 
 class StreamDataset:

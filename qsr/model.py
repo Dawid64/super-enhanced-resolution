@@ -7,7 +7,7 @@ from torch import Tensor
 class SrCNN(nn.Module):
     def __init__(self, frames_back=2, frames_forward=2, upscale_factor=1.5):
         super(SrCNN, self).__init__()
-        self.layers = nn.Sequential([
+        self.layers = nn.Sequential(
             nn.Upsample(scale_factor=upscale_factor, mode='bilinear', align_corners=False),
             nn.Conv2d(3 * (frames_back + 1 + frames_forward), 64, kernel_size=3, padding=1),
             nn.ReLU(),
@@ -18,11 +18,63 @@ class SrCNN(nn.Module):
             nn.Conv2d(64, 32, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.Conv2d(32, 3, kernel_size=3, padding=1)
-        ])
+        )
 
     def forward(self, back_frames: Tensor, low_res_frame: Tensor, forward_frames: Tensor) -> Tensor:
         x = torch.cat([back_frames, low_res_frame, forward_frames], dim=1)
         return self.layers(x)
+
+    def save(self, path):
+        torch.save(self.cpu().state_dict(), path)
+
+    @staticmethod
+    def load(path):
+        model = SrCNN()
+        model.load_state_dict(torch.load(path, weights_only=True))
+        model.eval()
+        return model
+
+
+class SrCnn(nn.Module):
+    def __init__(self):
+        super(SrCnn, self).__init__()
+        self.prev_high_res = nn.Sequential(
+            nn.Conv2d(3, 16, 3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 8, 3, padding=1),
+            nn.ReLU()
+        )
+        self.low_res = nn.Sequential(
+            nn.Conv2d(3, 16, 3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 8, 3, padding=1),
+            nn.ReLU()
+        )
+        self.fusion = nn.Sequential(
+            nn.Conv2d(16, 16, 3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 3, 3, padding=1)
+        )
+
+    def forward(self, x_prev_high_res, x_low_res):
+        if x_prev_high_res.dim() == 3:
+            x_prev_high_res = x_prev_high_res.unsqueeze(0)
+        if x_low_res.dim() == 3:
+            x_low_res = x_low_res.unsqueeze(0)
+        x_hd_up = F.interpolate(x_low_res, size=x_prev_high_res.shape[2:], mode='bilinear', align_corners=False)
+        x1 = self.prev_high_res(x_prev_high_res)
+        x2 = self.low_res(x_hd_up)
+        return self.fusion(torch.cat([x1, x2], dim=1))
+
+    def save(self, path):
+        torch.save(self.cpu().state_dict(), path)
+
+    @staticmethod
+    def load(path):
+        model = SrCnn()
+        model.load_state_dict(torch.load(path, weights_only=True))
+        model.eval()
+        return model
 
 
 class SrCNN2(nn.Module):

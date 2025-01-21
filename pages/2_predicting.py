@@ -6,14 +6,14 @@ from qsr.utils import SimpleListener
 from qsr.predictor import Upscaler
 
 st.set_page_config(layout="wide")
-st.title("Quantum Super Resolution")
+st.title("Temporal Super Resolution")
 
 
 class SRListener(SimpleListener):
     def __init__(self, stpbar):
         self.stpbar = stpbar
 
-    def callback(self, frame):
+    def epoch_callback(self, frame):
         self.stpbar.progress(frame)
 
 

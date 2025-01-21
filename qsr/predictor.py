@@ -26,7 +26,7 @@ class Upscaler:
         self.model = model.to(device)
         self.dataset_format = NewStreamDataset
         self.listener: SimpleListener = listener
-        self.run_name = "QSR_Upscaling"
+        self.run_name = "TSR_Upscaling"
 
     def _log_params(self, parameters: Dict):
         for key, value in parameters.items():
@@ -42,7 +42,7 @@ class Upscaler:
         if num_frames == -1:
             num_frames = dataset.get_video_length()-1
         self.model.eval()
-        mlflow.set_experiment("quantum_super_resolution_experiment")
+        mlflow.set_experiment("temporal_super_resolution_experiment")
         with mlflow.start_run(run_name=self.run_name):
             self._log_params({"video_file": video_file, "input_res": self.target_size, "output_res": self.original_size,
                              "num_frames": num_frames, "skip_frames": skip_frames, "fps": fps})
@@ -56,7 +56,7 @@ class Upscaler:
                 baseline.write(baseline_frame)
                 pbar.set_postfix({'frame': i})
                 if self.listener is not None:
-                    self.listener.callback(frame=i/num_frames)
+                    self.listener.epoch_callback(frame=i/num_frames)
                 out = pred_frame.squeeze(0).permute(1, 2, 0).cpu().numpy()
                 out = np.clip(out, 0, 1)
                 out = (out * 255).astype(np.uint8)
