@@ -2,9 +2,13 @@ from glob import glob
 import streamlit as st
 import pandas as pd
 import tempfile
+
+import tqdm
 from qsr import model
 from qsr.trainer import MultiTrainer
 from qsr.utils import SimpleListener
+
+from tqdm import tqdm
 
 
 class SLListener(SimpleListener):
@@ -55,7 +59,7 @@ class SLListener(SimpleListener):
 st.set_page_config(layout="wide")
 st.title("Temporal Super Resolution")
 
-models = sorted([x.split('/')[1] for x in glob("models/*.pt")])+[None]
+models = sorted([x.split('/')[1] for x in glob("models/*final.pt")])+['new TSRCNN_large', 'new TSRCNN_small']
 optimizers = ['AdamW', 'Adagrad', 'SGD']
 loss = ['MSE', 'PNSR', 'DSSIM']
 inputs_ress = [360, 480, 540, 720, 1080, 1440]
@@ -64,19 +68,19 @@ outputs_ress = [480, 540, 720, 1080, 1440, 2160]
 model = st.selectbox("Select an already trained model", models)
 row_cols1 = st.columns(3)
 with row_cols1[0]:
-    learning_rate = st.number_input("Learning rate", value=0.001, step=0.001, format="%.3f")
+    learning_rate = st.number_input("Learning rate", value=0.0001, step=0.0001, format="%.4f")
 with row_cols1[1]:
     optimizer = st.selectbox("Optimizer", optimizers)
 with row_cols1[2]:
-    loss = st.selectbox("Loss", loss, index=loss.index('PNSR'))
+    loss = st.selectbox("Loss", loss, index=loss.index('MSE'))
 
 row_cols2 = st.columns(3)
 with row_cols2[0]:
     batch_size = st.number_input("Batch size", value=2)
 with row_cols2[1]:
-    frames_backward = st.number_input("Frames back", value=2)
+    frames_backward = st.number_input("Frames back", value=1)
 with row_cols2[2]:
-    frames_forward = st.number_input("Frames forward", value=2)
+    frames_forward = st.number_input("Frames forward", value=1)
 
 row_cols3 = st.columns(3)
 
@@ -92,7 +96,8 @@ uploaded_file = st.file_uploader(
 
 start_training = st.button("Start Training")
 
-if start_training and uploaded_file is not None:
+
+def train(SLListener, loss, learning_rate, optimizer, batch_size, frames_backward, frames_forward, low_res, high_res, num_epochs, uploaded_file, model='new TSRCNN_small'):
     tfiles = [tempfile.NamedTemporaryFile(delete=False) for _ in uploaded_file]
     for tfile, file in zip(tfiles, uploaded_file):
         tfile.write(file.read())
@@ -106,6 +111,17 @@ if start_training and uploaded_file is not None:
     trainer = MultiTrainer(original_size=high_res, target_size=low_res, learning_rate=learning_rate, optimizer=optimizer,
                            loss=loss, frames_backward=frames_backward, frames_forward=frames_forward, model=model)
     trainer.listener = SLListener(epoch_bar, train_batch_bar, val_batch_bar, video_loading_bar)
-    trainer.train_model([tfile.name for tfile in tfiles], batch_size=batch_size, num_epochs=num_epochs)
-
+    path = trainer.train_model([tfile.name for tfile in tfiles], batch_size=batch_size, num_epochs=num_epochs)
     st.success("Training Completed!")
+    return path
+
+
+if start_training and uploaded_file is not None:
+    if len(uploaded_file) > 3:
+        pbar = tqdm(range(0, len(uploaded_file), 3), desc="Global Training")
+        for uploaded_3_files in pbar:
+            model = train(SLListener, loss, learning_rate, optimizer, batch_size, frames_backward, frames_forward,
+                          low_res, high_res, num_epochs, uploaded_file[uploaded_3_files:uploaded_3_files+3], model)
+    else:
+        train(SLListener, loss, learning_rate, optimizer, batch_size, frames_backward, frames_forward,
+              low_res, high_res, num_epochs, uploaded_file, model)

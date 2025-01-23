@@ -7,7 +7,7 @@ import mlflow
 import mlflow.pytorch
 
 from .dataset_loading import StreamDataset, NewStreamDataset, MultiVideoDataset
-from .model import SrCnn, SrCNN2, SrCNN
+from .model import SrCnn, TSRCNN_large, TSRCNN_small
 from .utils import SimpleListener
 from torch.utils.data import random_split, DataLoader
 from piqa.ssim import ssim, gaussian_kernel
@@ -32,13 +32,16 @@ class PNSR(nn.Module):
         return result
 
 
+def SSIM(y_pred, y_gt):
+    return ssim(y_pred, y_gt, kernel=gaussian_kernel(7).repeat(3, 1, 1).to(y_pred.device), channel_avg=True)[0].mean()
+
+
 class DSSIM(nn.Module):
     def __init__(self):
         super().__init__()
 
     def forward(self, y_pred, y_gt):
-        result = 1 - ssim(y_pred, y_gt, kernel=gaussian_kernel(7).repeat(3, 1, 1).to(y_pred.device), channel_avg=True)[0].mean()
-        return result
+        return 1 - SSIM(y_pred, y_gt)
 
 
 LOSS: Dict[Literal['MSE', 'PNSR', 'DSSIM'], nn.Module] = {
@@ -56,16 +59,30 @@ class MultiTrainer:
         self.criterion = LOSS[loss]()
         self.original_size = original_size
         self.target_size = target_size
-        self.base_epoch = int(model.split('_')[-1].split('e')[0]) if model is not None else 0
-        self.base_videos = int(model.split('_')[2].split('v')[0]) if model is not None else 0
-        if model is None:
-            self.model = SrCNN(upscale_factor=original_size[1]/target_size[1], frames_backward=frames_backward, frames_forward=frames_forward).to(device)
+        self.base_videos = int(model.split('_')[3].split('v')[0]) if model[:3] != 'new' else 0
+        upscale_factor = original_size[1]/target_size[1]
+        print(model)
+        if model == 'new TSRCNN_large':
+            self.model = TSRCNN_large(upscale_factor=upscale_factor, frames_backward=frames_backward, frames_forward=frames_forward).to(device)
+            self.size = 'large'
+        elif model == 'new TSRCNN_small':
+            self.model = TSRCNN_small(upscale_factor=upscale_factor, frames_backward=frames_backward, frames_forward=frames_forward).to(device)
+            self.size = 'small'
         else:
-            self.model = SrCNN(upscale_factor=original_size[1]/target_size[1], frames_backward=frames_backward,
-                               frames_forward=frames_forward).load_state_dict(torch.load(model, weights_only=True)).to(device)
+            if model.split('_')[0] == 'models/small' or model.split('_')[0] == 'small':
+                if model[:6] != 'models':
+                    model = 'models/' + model
+                self.model = TSRCNN_small.load(model, frames_backward=frames_backward, frames_forward=frames_forward, upscale_factor=upscale_factor).to(device)
+                self.size = 'small'
+            else:
+                if model[:6] != 'models':
+                    model = 'models/' + model
+                self.model = TSRCNN_large.load(model, frames_backward=frames_backward, frames_forward=frames_forward, upscale_factor=upscale_factor).to(device)
+                self.size = 'large'
         self.learning_rate = learning_rate
         self.optimizer = OPTIMIZER[optimizer](self.model.parameters(), lr=learning_rate)
-        self.history = {'train_loss': [], 'val_loss': [], 'epoch_loss': []}
+        self.history = {'train_loss': [], 'val_loss': [], 'epoch_loss': [], 'train_metrics': {'PSNR': [],
+                                                                                              'SSIM': []}, 'val_metrics': {'PSNR': [], 'SSIM': []}, 'epoch_metrics': {'PSNR': [], 'SSIM': []}}
         self.listener: SimpleListener = None
         self.last_loss = None
         self.save_interval = 1
@@ -78,7 +95,7 @@ class MultiTrainer:
         for key, value in parameters.items():
             mlflow.log_param(key, value)
 
-    def train_model(self, video_files: list[str] = ['video.mp4'], num_epochs=15, batch_size=2) -> SrCNN:
+    def train_model(self, video_files: list[str] = ['video.mp4'], num_epochs=15, batch_size=2):
         mlflow.set_experiment("temporal_super_resolution_experiment")
         dataset = self.dataset_format(video_files, original_size=self.original_size, target_size=self.target_size,
                                       frames_backward=self.frames_backward, frames_forward=self.frames_forward, listener=self.listener)
@@ -112,28 +129,41 @@ class MultiTrainer:
                 if self.listener is not None:
                     self.listener.epoch_callback(epoch/num_epochs, history=self.history)
                 if epoch % self.save_interval == 0:
-                    save_path = ''.join([f'models/{self.target_size[1]}_{self.original_size[1]}_{self.base_videos +
-                                                                                                 len(video_files)}videos_{self.optimizer.__class__.__name__}opt', f'_{self.criterion.__class__.__name__}loss_{self.frames_backward}fb_{self.frames_forward}ff_{self.base_epoch + epoch}ep.pt'])
+                    save_path = ''.join([f'models/{self.size}_{self.target_size[1]}_{self.original_size[1]}_{self.base_videos +
+                                                                                                             len(video_files)}videos_{self.optimizer.__class__.__name__}opt', f'_{self.criterion.__class__.__name__}loss_{self.frames_backward}fb_{self.frames_forward}ff_{epoch}ep.pt'])
                     self.model.eval()
                     self.save(save_path)
                     mlflow.log_artifact(save_path, artifact_path="models")
                     mlflow.pytorch.log_model(self.model, artifact_path=save_path.split('.')[0])
                     self.model.to(self.device)
-                pbar.set_postfix({'loss': self.last_epoch_loss})
-                mlflow.log_metric("val_loss", self.last_epoch_loss, step=epoch)
+                pbar.set_postfix({'loss': self.epoch_loss, 'PSNR': self.epoch_psnr, 'SSIM': self.epoch_ssim})
+                mlflow.log_metric("epoch_loss", self.epoch_loss, step=epoch)
+                mlflow.log_metric("epoch_PSNR", self.epoch_psnr, step=epoch)
+                mlflow.log_metric("epoch_SSIM", self.epoch_ssim, step=epoch)
+            self.save('_'.join(save_path.split('_')[:-1]) + '_final.pt')
+        return '_'.join(save_path.split('_')[:-1]) + '_final.pt'
 
     def train_batch(self, prev_frames, low_res_frame, next_frames, high_res_frame):
         prev_frames = prev_frames.to(self.device)
         low_res_frame = low_res_frame.to(self.device)
         next_frames = next_frames.to(self.device)
         high_res_frame = high_res_frame.to(self.device)
+        if self.size == 'small':
+            high_res_frame = high_res_frame[:, :, 6:-6, 6:-6]
+        if self.size == 'large':
+            high_res_frame = high_res_frame[:, :, 9:-9, 9:-9]
         self.optimizer.zero_grad()
         pred_high_res_frame = self.model(prev_frames, low_res_frame, next_frames)
         loss = self.criterion(pred_high_res_frame, high_res_frame)
         loss.backward()
         self.optimizer.step()
-        self.history['train_loss'].append(float(loss.item()))
-        return loss.item()
+        loss = loss.item()
+        self.history['train_loss'].append(loss)
+        psnr = PSNR(pred_high_res_frame, high_res_frame).item()
+        ssim = SSIM(pred_high_res_frame, high_res_frame).item()
+        self.history['train_metrics']['PSNR'].append(psnr)
+        self.history['train_metrics']['SSIM'].append(ssim)
+        return loss, (psnr, ssim)
 
     @torch.no_grad()
     def val_batch(self, prev_frames, low_res_frame, next_frames, high_res_frame):
@@ -141,33 +171,53 @@ class MultiTrainer:
         low_res_frame = low_res_frame.to(self.device)
         next_frames = next_frames.to(self.device)
         high_res_frame = high_res_frame.to(self.device)
+        if self.size == 'small':
+            high_res_frame = high_res_frame[:, :, 6:-6, 6:-6]
+        if self.size == 'large':
+            high_res_frame = high_res_frame[:, :, 9:-9, 9:-9]
         pred_high_res_frame = self.model(prev_frames, low_res_frame, next_frames)
-        loss = self.criterion(pred_high_res_frame, high_res_frame)
-        self.history['val_loss'].append(float(loss.item()))
-        return loss.item()
+        loss = self.criterion(pred_high_res_frame, high_res_frame).item()
+        self.history['val_loss'].append(loss)
+        psnr = PSNR(pred_high_res_frame, high_res_frame).item()
+        ssim = SSIM(pred_high_res_frame, high_res_frame).item()
+        self.history['val_metrics']['PSNR'].append(psnr)
+        self.history['val_metrics']['SSIM'].append(ssim)
+        return loss, (psnr, ssim)
 
     def single_epoch(self, train_loader, val_loader, epoch):
         self.model.train()
         train_losses = []
+        train_psnr = []
+        train_ssim = []
         train_pbar = tqdm(train_loader, desc=f'Epoch {epoch}', unit='batch', leave=True)
         for i, ((prev_frames, low_res_frame, next_frames), high_res_frame) in enumerate(train_pbar):
-            loss = self.train_batch(prev_frames, low_res_frame, next_frames, high_res_frame)
+            loss, metrics = self.train_batch(prev_frames, low_res_frame, next_frames, high_res_frame)
             if self.listener is not None:
                 self.listener.train_batch_callback((i+1)/len(train_loader), self.history)
             train_losses.append(loss)
-            train_pbar.set_postfix({'val_loss': loss})
+            train_psnr.append(metrics[0])
+            train_ssim.append(metrics[1])
+            train_pbar.set_postfix({'train_loss': loss, 'train_PSNR': metrics[0], 'train_SSIM': metrics[1]})
 
         self.model.eval()
         val_losses = []
+        val_psnr = []
+        val_ssim = []
         val_pbar = tqdm(val_loader, desc=f'Epoch {epoch}', unit='batch', leave=True)
         for i, ((prev_frames, low_res_frame, next_frames), high_res_frame) in enumerate(val_pbar):
-            loss = self.val_batch(prev_frames, low_res_frame, next_frames, high_res_frame)
+            loss, metrics = self.val_batch(prev_frames, low_res_frame, next_frames, high_res_frame)
             if self.listener is not None:
                 self.listener.val_batch_callback((i+1)/len(val_loader), self.history)
             val_losses.append(loss)
-            val_pbar.set_postfix({'val_loss': loss})
-        self.last_epoch_loss = sum(val_losses) / len(val_losses)
-        self.history['epoch_loss'].append(sum(val_losses) / len(val_losses))
+            val_psnr.append(metrics[0])
+            val_ssim.append(metrics[1])
+            val_pbar.set_postfix({'val_loss': loss, 'val_PSNR': metrics[0], 'val_SSIM': metrics[1]})
+        self.epoch_loss = sum(val_losses) / len(val_losses)
+        self.epoch_psnr = sum(val_psnr) / len(val_psnr)
+        self.epoch_ssim = sum(val_ssim) / len(val_ssim)
+        self.history['epoch_loss'].append(self.epoch_loss)
+        self.history['epoch_metrics']['PSNR'].append(self.epoch_psnr)
+        self.history['epoch_metrics']['SSIM'].append(self.epoch_ssim)
 
     def save(self, path):
         self.model.save(path)
@@ -269,7 +319,7 @@ class Trainer2(Trainer):
         self.run_name = "TSR_Training2"
         self.original_size = original_size
         self.target_size = target_size
-        self.model = SrCNN2(upscale_factor=original_size[1]/target_size[1]).to(self.device)
+        self.model = TSRCNN_large(upscale_factor=original_size[1]/target_size[1]).to(self.device)
         self.learning_rate = learning_rate
         self.optimizer = OPTIMIZER[optimizer](self.model.parameters(), lr=learning_rate)
 

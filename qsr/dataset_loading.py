@@ -1,5 +1,6 @@
 from typing import Literal
 import cv2
+from sympy import E
 import torch
 import numpy as np
 from torch.utils.data import IterableDataset, Dataset, DataLoader, random_split
@@ -45,16 +46,39 @@ class MultiVideoDataset(Dataset):
         cur_frame = frames[self.frames_backward]
         next_frames = list(frames[self.frames_backward + 1:])
         for i in range(self.frames_backward):
-            prev_frames[i] = cv2.resize(prev_frames[i], self.target_size, interpolation=cv2.INTER_AREA)
+            size = prev_frames[i].shape[0]
+            if size > self.target_size[1]:
+                prev_frames[i] = cv2.resize(prev_frames[i], self.target_size, interpolation=cv2.INTER_AREA)
+            elif size == self.target_size[1]:
+                pass
+            else:
+                raise Exception("Video cannot be smaller than the low resolution size")
             prev_frames[i] = torch.from_numpy(np.transpose(prev_frames[i], (2, 0, 1))).float() / 255.0
         prev_frames = torch.concat(prev_frames, dim=0)
+        size = cur_frame.shape[0]
         if self.mode == 'training':
-            high_res_frame = cv2.resize(cur_frame, self.original_size, interpolation=cv2.INTER_AREA)
+            if size > self.original_size[1]:
+                high_res_frame = cv2.resize(cur_frame, self.original_size, interpolation=cv2.INTER_AREA)
+            elif size == self.original_size[1]:
+                high_res_frame = cur_frame
+            else:
+                raise Exception("Video cannot be smaller than the high resolution except for the inference mode")
             high_res_frame = torch.from_numpy(np.transpose(high_res_frame, (2, 0, 1))).float() / 255.0
-        low_res_frame = cv2.resize(cur_frame, self.target_size, interpolation=cv2.INTER_AREA)
+        if size > self.target_size[1]:
+            low_res_frame = cv2.resize(cur_frame, self.target_size, interpolation=cv2.INTER_AREA)
+        elif size == self.target_size[1]:
+            low_res_frame = cur_frame
+        else:
+            raise Exception("Video cannot be smaller than the low resolution size")
         low_res_frame = torch.from_numpy(np.transpose(low_res_frame, (2, 0, 1))).float() / 255.0
         for i in range(self.frames_forward):
-            next_frames[i] = cv2.resize(next_frames[i], self.target_size, interpolation=cv2.INTER_AREA)
+            size = next_frames[i].shape[0]
+            if size > self.target_size[1]:
+                next_frames[i] = cv2.resize(next_frames[i], self.target_size, interpolation=cv2.INTER_AREA)
+            elif size == self.target_size[1]:
+                pass
+            else:
+                raise Exception("Video cannot be smaller than the low resolution size")
             next_frames[i] = torch.from_numpy(np.transpose(next_frames[i], (2, 0, 1))).float() / 255.0
         next_frames = torch.concat(next_frames, dim=0)
         return ((prev_frames, low_res_frame, next_frames),  high_res_frame) if self.mode == 'training' else (prev_frames, low_res_frame, next_frames)
