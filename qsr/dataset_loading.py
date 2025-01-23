@@ -1,3 +1,4 @@
+from typing import Literal
 import cv2
 import torch
 import numpy as np
@@ -9,18 +10,19 @@ from tqdm import tqdm
 
 
 class MultiVideoDataset(Dataset):
-    def __init__(self, video_paths: list[str], original_size=(1920, 1080), target_size=(1280, 720), frames_back=2, frames_forward=2, listener=None):
+    def __init__(self, video_paths: list[str], original_size=(1920, 1080), target_size=(1280, 720), frames_backward=2, frames_forward=2, listener=None, mode: Literal['training', 'inference'] = 'training'):
         super().__init__()
         self.video_paths = video_paths
         self.original_size = original_size
         self.target_size = target_size
-        self.frames_back = frames_back
+        self.frames_backward = frames_backward
         self.frames_forward = frames_forward
         self.frame_windows = np.array([])
+        self.mode = mode
         pbar = tqdm(self.video_paths, desc="Loading videos")
         for i, video_path in enumerate(pbar):
             if listener:
-                listener.video_loading_callback(i/len(self.video_paths))
+                listener.video_loading_callback((i+1)/len(self.video_paths))
             frames = []
             reader = ffmpegcv.VideoCaptureNV(video_path, pix_fmt='rgb24') if torch.cuda.is_available() else ffmpegcv.VideoCapture(video_path, pix_fmt='rgb24')
             while True:
@@ -30,30 +32,32 @@ class MultiVideoDataset(Dataset):
                 frames.append(frame)
             reader.release()
             frames = np.array(frames)
-            windows = sliding_window_view(frames, (frames_back + frames_forward + 1, *frames[0].shape)).squeeze()
+            windows = sliding_window_view(frames, (frames_backward + frames_forward + 1, *frames[0].shape)).squeeze().astype(np.uint8)
             self.frame_windows = np.concatenate([self.frame_windows, windows]) if self.frame_windows.size else windows
+        print(self.frame_windows.nbytes / 1024**3, "GB")
 
     def __len__(self):
         return len(self.frame_windows)
 
     def __getitem__(self, idx):
         frames = self.frame_windows[idx]
-        prev_frames = list(frames[:self.frames_back])
-        cur_frame = frames[self.frames_back]
-        next_frames = list(frames[self.frames_back + 1:])
-        for i in range(self.frames_back):
+        prev_frames = list(frames[:self.frames_backward])
+        cur_frame = frames[self.frames_backward]
+        next_frames = list(frames[self.frames_backward + 1:])
+        for i in range(self.frames_backward):
             prev_frames[i] = cv2.resize(prev_frames[i], self.target_size, interpolation=cv2.INTER_AREA)
             prev_frames[i] = torch.from_numpy(np.transpose(prev_frames[i], (2, 0, 1))).float() / 255.0
         prev_frames = torch.concat(prev_frames, dim=0)
-        high_res_frame = cv2.resize(cur_frame, self.original_size, interpolation=cv2.INTER_AREA)
-        high_res_frame = torch.from_numpy(np.transpose(high_res_frame, (2, 0, 1))).float() / 255.0
+        if self.mode == 'training':
+            high_res_frame = cv2.resize(cur_frame, self.original_size, interpolation=cv2.INTER_AREA)
+            high_res_frame = torch.from_numpy(np.transpose(high_res_frame, (2, 0, 1))).float() / 255.0
         low_res_frame = cv2.resize(cur_frame, self.target_size, interpolation=cv2.INTER_AREA)
         low_res_frame = torch.from_numpy(np.transpose(low_res_frame, (2, 0, 1))).float() / 255.0
         for i in range(self.frames_forward):
             next_frames[i] = cv2.resize(next_frames[i], self.target_size, interpolation=cv2.INTER_AREA)
             next_frames[i] = torch.from_numpy(np.transpose(next_frames[i], (2, 0, 1))).float() / 255.0
         next_frames = torch.concat(next_frames, dim=0)
-        return ((prev_frames, low_res_frame, next_frames), high_res_frame)
+        return ((prev_frames, low_res_frame, next_frames),  high_res_frame) if self.mode == 'training' else (prev_frames, low_res_frame, next_frames)
 
 
 if __name__ == "__main__":

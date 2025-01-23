@@ -28,7 +28,8 @@ class PNSR(nn.Module):
         super().__init__(*args, **kwargs)
 
     def forward(self, y_pred, y_gt):
-        return 1/PSNR(y_pred, y_gt)
+        result = 1/PSNR(y_pred, y_gt)
+        return result
 
 
 class DSSIM(nn.Module):
@@ -36,7 +37,8 @@ class DSSIM(nn.Module):
         super().__init__()
 
     def forward(self, y_pred, y_gt):
-        return 1 - ssim(y_pred, y_gt, kernel=gaussian_kernel(7).repeat(3, 1, 1).to(y_pred.device), channel_avg=True)[0]
+        result = 1 - ssim(y_pred, y_gt, kernel=gaussian_kernel(7).repeat(3, 1, 1).to(y_pred.device), channel_avg=True)[0].mean()
+        return result
 
 
 LOSS: Dict[Literal['MSE', 'PNSR', 'DSSIM'], nn.Module] = {
@@ -47,14 +49,20 @@ LOSS: Dict[Literal['MSE', 'PNSR', 'DSSIM'], nn.Module] = {
 
 
 class MultiTrainer:
-    def __init__(self, device='auto', original_size=(1920, 1080), target_size=(1280, 720), learning_rate: float = 0.001, optimizer: Literal['AdamW', 'Adagrad', 'SGD'] = 'AdamW', loss: Literal['MSE', 'PNSR', 'DSSIM'] = 'MSE', frames_back=2, frames_forward=2):
+    def __init__(self, device='auto', original_size=(1920, 1080), target_size=(1280, 720), learning_rate: float = 0.001, optimizer: Literal['AdamW', 'Adagrad', 'SGD'] = 'AdamW', loss: Literal['MSE', 'PNSR', 'DSSIM'] = 'MSE', frames_backward=2, frames_forward=2, model=None):
         if device == 'auto':
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.device = device
         self.criterion = LOSS[loss]()
         self.original_size = original_size
         self.target_size = target_size
-        self.model = SrCNN(upscale_factor=original_size[1]/target_size[1], frames_back=frames_back, frames_forward=frames_forward).to(device)
+        self.base_epoch = int(model.split('_')[-1].split('e')[0]) if model is not None else 0
+        self.base_videos = int(model.split('_')[2].split('v')[0]) if model is not None else 0
+        if model is None:
+            self.model = SrCNN(upscale_factor=original_size[1]/target_size[1], frames_backward=frames_backward, frames_forward=frames_forward).to(device)
+        else:
+            self.model = SrCNN(upscale_factor=original_size[1]/target_size[1], frames_backward=frames_backward,
+                               frames_forward=frames_forward).load_state_dict(torch.load(model, weights_only=True)).to(device)
         self.learning_rate = learning_rate
         self.optimizer = OPTIMIZER[optimizer](self.model.parameters(), lr=learning_rate)
         self.history = {'train_loss': [], 'val_loss': [], 'epoch_loss': []}
@@ -62,18 +70,18 @@ class MultiTrainer:
         self.last_loss = None
         self.save_interval = 1
         self.dataset_format = MultiVideoDataset
-        self.frames_back = frames_back
+        self.frames_backward = frames_backward
         self.frames_forward = frames_forward
-        self.run_name = "TSR_Training"
+        self.run_name = f"{target_size[1]}p -> {original_size[1]}p {frames_backward}fb{frames_forward}ff TSR training"
 
     def _log_params(self, parameters: Dict):
         for key, value in parameters.items():
             mlflow.log_param(key, value)
 
-    def train_model(self, video_files: list[str] = ['video.mp4'], num_epochs=15, batch_size=4) -> SrCNN:
+    def train_model(self, video_files: list[str] = ['video.mp4'], num_epochs=15, batch_size=2) -> SrCNN:
         mlflow.set_experiment("temporal_super_resolution_experiment")
         dataset = self.dataset_format(video_files, original_size=self.original_size, target_size=self.target_size,
-                                      frames_back=self.frames_back, frames_forward=self.frames_forward, listener=self.listener)
+                                      frames_backward=self.frames_backward, frames_forward=self.frames_forward, listener=self.listener)
 
         train_dataset, val_dataset = random_split(dataset, [0.8, 0.2])
 
@@ -93,7 +101,9 @@ class MultiTrainer:
                               "target_size": self.target_size,
                               "optimizer": self.optimizer.__class__.__name__,
                               "learning_rate": self.learning_rate,
-                              "criterion": self.criterion.__class__.__name__})
+                              "criterion": self.criterion.__class__.__name__,
+                              "forward_frames": self.frames_forward,
+                              "backward_frames": self.frames_backward})
 
             pbar = tqdm(range(1, num_epochs + 1), desc='Training',
                         unit='epoch', postfix={'loss': 'inf'})
@@ -101,16 +111,16 @@ class MultiTrainer:
                 self.single_epoch(train_loader, val_loader, epoch)
                 if self.listener is not None:
                     self.listener.epoch_callback(epoch/num_epochs, history=self.history)
-                    if epoch % self.save_interval == 0:
-                        save_path = f'models/model_{self.target_size[1]}_{self.original_size[1]}_epoch{epoch}.pt'
-                        self.model.eval()
-                        self.save(save_path)
-                        mlflow.log_artifact(save_path, artifact_path="models")
-                        mlflow.pytorch.log_model(self.model, artifact_path=f"models/model_{self.target_size[1]}_{self.original_size[1]}_epoch{epoch}")
-                        self.model.to(self.device)
+                if epoch % self.save_interval == 0:
+                    save_path = ''.join([f'models/{self.target_size[1]}_{self.original_size[1]}_{self.base_videos +
+                                                                                                 len(video_files)}videos_{self.optimizer.__class__.__name__}opt', f'_{self.criterion.__class__.__name__}loss_{self.frames_backward}fb_{self.frames_forward}ff_{self.base_epoch + epoch}ep.pt'])
+                    self.model.eval()
+                    self.save(save_path)
+                    mlflow.log_artifact(save_path, artifact_path="models")
+                    mlflow.pytorch.log_model(self.model, artifact_path=save_path.split('.')[0])
+                    self.model.to(self.device)
                 pbar.set_postfix({'loss': self.last_epoch_loss})
                 mlflow.log_metric("val_loss", self.last_epoch_loss, step=epoch)
-            self.save(f'models/model_{self.target_size[1]}_{self.original_size[1]}_final.pt')
 
     def train_batch(self, prev_frames, low_res_frame, next_frames, high_res_frame):
         prev_frames = prev_frames.to(self.device)
@@ -141,9 +151,9 @@ class MultiTrainer:
         train_losses = []
         train_pbar = tqdm(train_loader, desc=f'Epoch {epoch}', unit='batch', leave=True)
         for i, ((prev_frames, low_res_frame, next_frames), high_res_frame) in enumerate(train_pbar):
+            loss = self.train_batch(prev_frames, low_res_frame, next_frames, high_res_frame)
             if self.listener is not None:
                 self.listener.train_batch_callback((i+1)/len(train_loader), self.history)
-            loss = self.train_batch(prev_frames, low_res_frame, next_frames, high_res_frame)
             train_losses.append(loss)
             train_pbar.set_postfix({'val_loss': loss})
 
@@ -151,9 +161,9 @@ class MultiTrainer:
         val_losses = []
         val_pbar = tqdm(val_loader, desc=f'Epoch {epoch}', unit='batch', leave=True)
         for i, ((prev_frames, low_res_frame, next_frames), high_res_frame) in enumerate(val_pbar):
+            loss = self.val_batch(prev_frames, low_res_frame, next_frames, high_res_frame)
             if self.listener is not None:
                 self.listener.val_batch_callback((i+1)/len(val_loader), self.history)
-            loss = self.val_batch(prev_frames, low_res_frame, next_frames, high_res_frame)
             val_losses.append(loss)
             val_pbar.set_postfix({'val_loss': loss})
         self.last_epoch_loss = sum(val_losses) / len(val_losses)

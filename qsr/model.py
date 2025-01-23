@@ -5,11 +5,11 @@ from torch import Tensor
 
 
 class SrCNN(nn.Module):
-    def __init__(self, frames_back=2, frames_forward=2, upscale_factor=1.5):
+    def __init__(self, frames_backward=2, frames_forward=2, upscale_factor=1.5):
         super(SrCNN, self).__init__()
         self.layers = nn.Sequential(
             nn.Upsample(scale_factor=upscale_factor, mode='bilinear', align_corners=False),
-            nn.Conv2d(3 * (frames_back + 1 + frames_forward), 64, kernel_size=3, padding=1),
+            nn.Conv2d(3 * (frames_backward + 1 + frames_forward), 64, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.ReLU(),
