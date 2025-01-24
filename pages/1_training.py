@@ -18,12 +18,17 @@ class SLListener(SimpleListener):
         self.val_ssim = None
         self.epoch_psnr = None
         self.epoch_ssim = None
+        self.epoch_columns = None
+        self.train_columns = None
+        self.val_columns = None
 
     def epoch_callback(self, progress, history):
+        if self.epoch_columns is None:
+            self.epoch_columns = st.columns(2)
+        epoch_columns = self.epoch_columns
         self.train_batch_bar.progress(0, text="Training Batches")
         self.val_batch_bar.progress(0, text="Validation Batches")
         self.epoch_bar.progress(progress, text="Epochs")
-        epoch_columns = st.columns(2)
         with epoch_columns[0]:
             if self.epoch_psnr is None:
                 self.df_psnr = pd.DataFrame(columns=["epoch_psnr"])
@@ -40,8 +45,10 @@ class SLListener(SimpleListener):
             self.epoch_ssim.add_rows(new_history)
 
     def train_batch_callback(self, progress, history):
+        if self.train_columns is None:
+            self.train_columns = st.columns(2)
+        train_columns = self.train_columns
         self.train_batch_bar.progress(progress, text="Training Batches")
-        train_columns = st.columns(2)
         with train_columns[0]:
             if self.train_psnr is None:
                 self.df_psnr = pd.DataFrame(columns=["train_psnr"])
@@ -58,8 +65,10 @@ class SLListener(SimpleListener):
             self.train_ssim.add_rows(new_history)
 
     def val_batch_callback(self, progress, history):
+        if self.val_columns is None:
+            self.val_columns = st.columns(2)
+        val_columns = self.val_columns
         self.val_batch_bar.progress(progress, text="Validation Batches")
-        val_columns = st.columns(2)
         with val_columns[0]:
             if self.val_psnr is None:
                 self.df_psnr = pd.DataFrame(columns=["val_psnr"])

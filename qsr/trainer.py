@@ -61,7 +61,6 @@ class MultiTrainer:
         self.target_size = target_size
         self.base_videos = int(model.split('_')[3].split('v')[0]) if model[:3] != 'new' else 0
         upscale_factor = original_size[1]/target_size[1]
-        print(model)
         if model == 'new TSRCNN_large':
             self.model = TSRCNN_large(upscale_factor=upscale_factor, frames_backward=frames_backward, frames_forward=frames_forward).to(device)
             self.size = 'large'
@@ -99,7 +98,7 @@ class MultiTrainer:
         mlflow.set_experiment("temporal_super_resolution_experiment")
         video_batches = [video_files[i:i+video_batch_size] if i+video_batch_size <
                          len(video_files) else video_files[i:] for i in range(0, len(video_files), video_batch_size)]
-        global_training = tqdm(enumerate(video_batches), desc='Global Training')
+        global_training = tqdm(enumerate(video_batches), total=len(video_batches), desc='Global Training')
         for i, video_files in global_training:
             dataset = self.dataset_format(video_files, original_size=self.original_size, target_size=self.target_size,
                                           frames_backward=self.frames_backward, frames_forward=self.frames_forward, listener=self.listener)
