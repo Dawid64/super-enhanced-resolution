@@ -95,52 +95,58 @@ class MultiTrainer:
         for key, value in parameters.items():
             mlflow.log_param(key, value)
 
-    def train_model(self, video_files: list[str] = ['video.mp4'], num_epochs=15, batch_size=2):
+    def train_model(self, video_files: list[str] = ['video.mp4'], num_epochs=15, batch_size=2, video_batch_size=3) -> str:
         mlflow.set_experiment("temporal_super_resolution_experiment")
-        dataset = self.dataset_format(video_files, original_size=self.original_size, target_size=self.target_size,
-                                      frames_backward=self.frames_backward, frames_forward=self.frames_forward, listener=self.listener)
+        video_batches = [video_files[i:i+video_batch_size] if i+video_batch_size <
+                         len(video_files) else video_files[i:] for i in range(0, len(video_files), video_batch_size)]
+        global_training = tqdm(enumerate(video_batches), desc='Global Training')
+        for i, video_files in global_training:
+            dataset = self.dataset_format(video_files, original_size=self.original_size, target_size=self.target_size,
+                                          frames_backward=self.frames_backward, frames_forward=self.frames_forward, listener=self.listener)
 
-        train_dataset, val_dataset = random_split(dataset, [0.8, 0.2])
+            train_dataset, val_dataset = random_split(dataset, [0.8, 0.2])
 
-        train_size = len(train_dataset)
-        val_size = len(val_dataset)
+            train_size = len(train_dataset)
+            val_size = len(val_dataset)
 
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 
-        with mlflow.start_run(run_name=self.run_name):
-            self._log_params({"video_files": video_files,
-                              "num_epochs": num_epochs,
-                              "train_size": train_size,
-                              "val_size": val_size,
-                              "batch_size": batch_size,
-                              "original_size": self.original_size,
-                              "target_size": self.target_size,
-                              "optimizer": self.optimizer.__class__.__name__,
-                              "learning_rate": self.learning_rate,
-                              "criterion": self.criterion.__class__.__name__,
-                              "forward_frames": self.frames_forward,
-                              "backward_frames": self.frames_backward})
+            with mlflow.start_run(run_name=self.run_name):
+                self._log_params({"video_files": video_files,
+                                  "already_trained_on_videos": i*video_batch_size,
+                                  "num_epochs": num_epochs,
+                                  "train_size": train_size,
+                                  "val_size": val_size,
+                                  "batch_size": batch_size,
+                                  "original_size": self.original_size,
+                                  "target_size": self.target_size,
+                                  "optimizer": self.optimizer.__class__.__name__,
+                                  "learning_rate": self.learning_rate,
+                                  "criterion": self.criterion.__class__.__name__,
+                                  "forward_frames": self.frames_forward,
+                                  "backward_frames": self.frames_backward})
 
-            pbar = tqdm(range(1, num_epochs + 1), desc='Training',
-                        unit='epoch', postfix={'loss': 'inf'})
-            for epoch in pbar:
-                self.single_epoch(train_loader, val_loader, epoch)
-                if self.listener is not None:
-                    self.listener.epoch_callback(epoch/num_epochs, history=self.history)
-                if epoch % self.save_interval == 0:
-                    save_path = ''.join([f'models/{self.size}_{self.target_size[1]}_{self.original_size[1]}_{self.base_videos +
-                                                                                                             len(video_files)}videos_{self.optimizer.__class__.__name__}opt', f'_{self.criterion.__class__.__name__}loss_{self.frames_backward}fb_{self.frames_forward}ff_{epoch}ep.pt'])
-                    self.model.eval()
-                    self.save(save_path)
-                    mlflow.log_artifact(save_path, artifact_path="models")
-                    mlflow.pytorch.log_model(self.model, artifact_path=save_path.split('.')[0])
-                    self.model.to(self.device)
-                pbar.set_postfix({'loss': self.epoch_loss, 'PSNR': self.epoch_psnr, 'SSIM': self.epoch_ssim})
-                mlflow.log_metric("epoch_loss", self.epoch_loss, step=epoch)
-                mlflow.log_metric("epoch_PSNR", self.epoch_psnr, step=epoch)
-                mlflow.log_metric("epoch_SSIM", self.epoch_ssim, step=epoch)
-            self.save('_'.join(save_path.split('_')[:-1]) + '_final.pt')
+                pbar = tqdm(range(1, num_epochs + 1), desc='Training',
+                            unit='epoch', postfix={'loss': 'inf'})
+                for epoch in pbar:
+                    self.single_epoch(train_loader, val_loader, epoch)
+                    if self.listener is not None:
+                        self.listener.epoch_callback(epoch/num_epochs, history=self.history)
+                    if epoch % self.save_interval == 0:
+                        save_path = ''.join([f'models/{self.size}_{self.target_size[1]}_{self.original_size[1]}_{self.base_videos + i*video_batch_size +
+                                                                                                                 len(video_files)}videos_{self.optimizer.__class__.__name__}opt', f'_{self.criterion.__class__.__name__}loss_{self.frames_backward}fb_{self.frames_forward}ff_{num_epochs}ep_{epoch}.pt'])
+                        self.model.eval()
+                        self.model.to('cpu')
+                        mlflow.log_artifact(save_path, artifact_path="models")
+                        mlflow.pytorch.log_model(self.model, artifact_path=save_path.split('.')[0])
+                        self.model.to(self.device)
+                    pbar.set_postfix({'loss': self.epoch_loss, 'PSNR': self.epoch_psnr, 'SSIM': self.epoch_ssim})
+                    mlflow.log_metric("epoch_loss", self.epoch_loss, step=epoch)
+                    mlflow.log_metric("epoch_PSNR", self.epoch_psnr, step=epoch)
+                    mlflow.log_metric("epoch_SSIM", self.epoch_ssim, step=epoch)
+                self.save('_'.join(save_path.split('_')[:-1]) + '_final.pt')
+                self.model.to(self.device)
         return '_'.join(save_path.split('_')[:-1]) + '_final.pt'
 
     def train_batch(self, prev_frames, low_res_frame, next_frames, high_res_frame):
