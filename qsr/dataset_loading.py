@@ -35,7 +35,6 @@ class MultiVideoDataset(Dataset):
             frames = np.array(frames)
             windows = sliding_window_view(frames, (frames_backward + frames_forward + 1, *frames[0].shape)).squeeze().astype(np.uint8)
             self.frame_windows = np.concatenate([self.frame_windows, windows]) if self.frame_windows.size else windows
-        print(self.frame_windows.nbytes / 1024**3, "GB")
 
     def __len__(self):
         return len(self.frame_windows)
