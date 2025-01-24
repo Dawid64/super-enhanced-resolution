@@ -1,15 +1,9 @@
 from glob import glob
-from sqlalchemy import column
 import streamlit as st
 import pandas as pd
 import tempfile
-
-import tqdm
-from qsr import model
 from qsr.trainer import MultiTrainer
 from qsr.utils import SimpleListener
-
-from tqdm import tqdm
 
 
 class SLListener(SimpleListener):
@@ -94,7 +88,7 @@ loss = ['MSE', 'PNSR', 'DSSIM']
 inputs_ress = [360, 480, 540, 720, 1080, 1440]
 outputs_ress = [480, 540, 720, 1080, 1440, 2160]
 
-model = st.selectbox("Select an already trained model", models)
+selected_model = st.selectbox("Select an already trained model", models)
 row_cols1 = st.columns(3)
 with row_cols1[0]:
     learning_rate = st.number_input("Learning rate", value=0.0001, step=0.0001, format="%.4f")
@@ -103,13 +97,15 @@ with row_cols1[1]:
 with row_cols1[2]:
     loss = st.selectbox("Loss", loss, index=loss.index('MSE'))
 
-row_cols2 = st.columns(3)
+row_cols2 = st.columns(4)
 with row_cols2[0]:
     batch_size = st.number_input("Batch size", value=2)
 with row_cols2[1]:
     frames_backward = st.number_input("Frames back", value=1)
 with row_cols2[2]:
     frames_forward = st.number_input("Frames forward", value=1)
+with row_cols2[3]:
+    video_batch_size = st.number_input("Video batch size", value=3)
 
 row_cols3 = st.columns(3)
 
@@ -140,11 +136,11 @@ def train(SLListener, loss, learning_rate, optimizer, batch_size, frames_backwar
     trainer = MultiTrainer(original_size=high_res, target_size=low_res, learning_rate=learning_rate, optimizer=optimizer,
                            loss=loss, frames_backward=frames_backward, frames_forward=frames_forward, model=model)
     trainer.listener = SLListener(epoch_bar, train_batch_bar, val_batch_bar, video_loading_bar)
-    path = trainer.train_model([tfile.name for tfile in tfiles], batch_size=batch_size, num_epochs=num_epochs)
+    path = trainer.train_model([tfile.name for tfile in tfiles], batch_size=batch_size, num_epochs=num_epochs, video_batch_size=video_batch_size)
     st.success("Training Completed!")
     return path
 
 
 if start_training and uploaded_file is not None:
     train(SLListener, loss, learning_rate, optimizer, batch_size, frames_backward, frames_forward,
-          low_res, high_res, num_epochs, uploaded_file, model)
+          low_res, high_res, num_epochs, uploaded_file, selected_model)
