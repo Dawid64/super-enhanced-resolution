@@ -29,15 +29,15 @@ class SLListener(SimpleListener):
         self.train_batch_bar.progress(0, text="Training Batches")
         self.val_batch_bar.progress(0, text="Validation Batches")
         self.epoch_bar.progress(progress, text="Epochs")
-        columns = st.columns(2)
-        with columns[0]:
+        epoch_columns = st.columns(2)
+        with epoch_columns[0]:
             if self.epoch_psnr is None:
                 self.df_psnr = pd.DataFrame(columns=["epoch_psnr"])
                 self.epoch_psnr = st.line_chart(self.df_psnr, y=["epoch_psnr"], x_label="Epochs", y_label="PSNR")
             epoch_psnr = [history["epoch_metrics"]["PSNR"][-1]]
             new_history = pd.DataFrame({"epoch_psnr": epoch_psnr})
             self.epoch_psnr.add_rows(new_history)
-        with columns[1]:
+        with epoch_columns[1]:
             if self.epoch_ssim is None:
                 self.df_ssim = pd.DataFrame(columns=["epoch_ssim"])
                 self.epoch_ssim = st.line_chart(self.df_ssim, y=["epoch_ssim"], x_label="Epochs", y_label="SSIM")
@@ -47,15 +47,15 @@ class SLListener(SimpleListener):
 
     def train_batch_callback(self, progress, history):
         self.train_batch_bar.progress(progress, text="Training Batches")
-        columns = st.columns(2)
-        with columns[0]:
+        train_columns = st.columns(2)
+        with train_columns[0]:
             if self.train_psnr is None:
                 self.df_psnr = pd.DataFrame(columns=["train_psnr"])
                 self.train_psnr = st.line_chart(self.df_psnr, y=["train_psnr"], x_label="Batches", y_label="PSNR")
             train_psnr = [history["train_metrics"]["PSNR"][-1]]
             new_history = pd.DataFrame({"train_psnr": train_psnr})
             self.train_psnr.add_rows(new_history)
-        with columns[1]:
+        with train_columns[1]:
             if self.train_ssim is None:
                 self.df_ssim = pd.DataFrame(columns=["train_ssim"])
                 self.train_ssim = st.line_chart(self.df_ssim, y=["train_ssim"], x_label="Batches", y_label="SSIM")
@@ -65,15 +65,15 @@ class SLListener(SimpleListener):
 
     def val_batch_callback(self, progress, history):
         self.val_batch_bar.progress(progress, text="Validation Batches")
-        columns = st.columns(2)
-        with columns[0]:
+        val_columns = st.columns(2)
+        with val_columns[0]:
             if self.val_psnr is None:
                 self.df_psnr = pd.DataFrame(columns=["val_psnr"])
                 self.val_psnr = st.line_chart(self.df_psnr, y=["val_psnr"], x_label="Batches", y_label="PSNR")
             val_psnr = [history["val_metrics"]["PSNR"][-1]]
             new_history = pd.DataFrame({"val_psnr": val_psnr})
             self.val_psnr.add_rows(new_history)
-        with columns[1]:
+        with val_columns[1]:
             if self.val_ssim is None:
                 self.df_ssim = pd.DataFrame(columns=["val_ssim"])
                 self.val_ssim = st.line_chart(self.df_ssim, y=["val_ssim"], x_label="Batches", y_label="SSIM")

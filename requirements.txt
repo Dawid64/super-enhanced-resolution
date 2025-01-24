@@ -5,6 +5,7 @@ torch
 torchvision
 opencv-python
 piqa
+ffmpegcv
 
 # ML Ops tools
 streamlit

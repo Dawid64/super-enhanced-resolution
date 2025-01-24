@@ -136,8 +136,9 @@ class MultiTrainer:
                     if epoch % self.save_interval == 0:
                         save_path = ''.join([f'models/{self.size}_{self.target_size[1]}_{self.original_size[1]}_{self.base_videos + i*video_batch_size +
                                                                                                                  len(video_files)}videos_{self.optimizer.__class__.__name__}opt', f'_{self.criterion.__class__.__name__}loss_{self.frames_backward}fb_{self.frames_forward}ff_{num_epochs}ep_{epoch}.pt'])
+
                         self.model.eval()
-                        self.model.to('cpu')
+                        self.save(save_path)
                         mlflow.log_artifact(save_path, artifact_path="models")
                         mlflow.pytorch.log_model(self.model, artifact_path=save_path.split('.')[0])
                         self.model.to(self.device)
