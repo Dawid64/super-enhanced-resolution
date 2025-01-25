@@ -88,7 +88,6 @@ class MultiTrainer:
         self.dataset_format = MultiVideoDataset
         self.frames_backward = frames_backward
         self.frames_forward = frames_forward
-        self.run_name = f"{target_size[1]}p -> {original_size[1]}p {frames_backward}fb{frames_forward}ff TSR training"
 
     def _log_params(self, parameters: Dict):
         for key, value in parameters.items():
@@ -110,7 +109,8 @@ class MultiTrainer:
 
             train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
             val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
-
+            self.run_name = f"{self.size}_{self.target_size[1]}_{self.original_size[1]}_{self.base_videos + i*video_batch_size +
+                                                                                         len(video_files)}videos_{self.optimizer.__class__.__name__}opt', f'_{self.criterion.__class__.__name__}loss_{self.frames_backward}fb_{self.frames_forward}ff_{num_epochs}ep"
             with mlflow.start_run(run_name=self.run_name):
                 self._log_params({"video_files": video_files,
                                   "already_trained_on_videos": i*video_batch_size,

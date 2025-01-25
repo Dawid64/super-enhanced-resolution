@@ -14,17 +14,20 @@ class SLListener(SimpleListener):
         self.video_loading_bar = video_loading_bar
         self.train_psnr = None
         self.val_psnr = None
+        self.train_loss = None
         self.train_ssim = None
         self.val_ssim = None
+        self.val_loss = None
         self.epoch_psnr = None
         self.epoch_ssim = None
+        self.epoch_loss = None
         self.epoch_columns = None
         self.train_columns = None
         self.val_columns = None
 
     def epoch_callback(self, progress, history):
         if self.epoch_columns is None:
-            self.epoch_columns = st.columns(2)
+            self.epoch_columns = st.columns(3)
         epoch_columns = self.epoch_columns
         self.train_batch_bar.progress(0, text="Training Batches")
         self.val_batch_bar.progress(0, text="Validation Batches")
@@ -43,48 +46,67 @@ class SLListener(SimpleListener):
             epoch_ssim = [history["epoch_metrics"]["SSIM"][-1]]
             new_history = pd.DataFrame({"epoch_ssim": epoch_ssim})
             self.epoch_ssim.add_rows(new_history)
+        with epoch_columns[2]:
+            if self.epoch_loss is None:
+                self.df_loss = pd.DataFrame(columns=["epoch_loss"])
+                self.epoch_loss = st.line_chart(self.df_loss, y=["epoch_loss"], x_label="Epochs", y_label="Loss")
+            epoch_loss = [history["epoch_loss"][-1]]
+            new_history = pd.DataFrame({"epoch_loss": epoch_loss})
+            self.epoch_loss.add_rows(new_history)
 
     def train_batch_callback(self, progress, history):
+        if self.train_columns is None:
+            self.train_columns = st.columns(3)
+        train_columns = self.train_columns
         self.train_batch_bar.progress(progress, text="Training Batches")
-        # if self.train_columns is None:
-        #     self.train_columns = st.columns(2)
-        # train_columns = self.train_columns
-
-        # with train_columns[0]:
-        #     if self.train_psnr is None:
-        #         self.df_psnr = pd.DataFrame(columns=["train_psnr"])
-        #         self.train_psnr = st.line_chart(self.df_psnr, y=["train_psnr"], x_label="Batches", y_label="PSNR")
-        #     train_psnr = [history["train_metrics"]["PSNR"][-1]]
-        #     new_history = pd.DataFrame({"train_psnr": train_psnr})
-        #     self.train_psnr.add_rows(new_history)
-        # with train_columns[1]:
-        #     if self.train_ssim is None:
-        #         self.df_ssim = pd.DataFrame(columns=["train_ssim"])
-        #         self.train_ssim = st.line_chart(self.df_ssim, y=["train_ssim"], x_label="Batches", y_label="SSIM")
-        #     train_ssim = [history["train_metrics"]["SSIM"][-1]]
-        #     new_history = pd.DataFrame({"train_ssim": train_ssim})
-        #     self.train_ssim.add_rows(new_history)
+        with train_columns[0]:
+            if self.train_psnr is None:
+                self.df_psnr = pd.DataFrame(columns=["train_psnr"])
+                self.train_psnr = st.line_chart(self.df_psnr, y=["train_psnr"], x_label="Batches", y_label="PSNR")
+            train_psnr = [history["train_metrics"]["PSNR"][-1]]
+            new_history = pd.DataFrame({"train_psnr": train_psnr})
+            self.train_psnr.add_rows(new_history)
+        with train_columns[1]:
+            if self.train_ssim is None:
+                self.df_ssim = pd.DataFrame(columns=["train_ssim"])
+                self.train_ssim = st.line_chart(self.df_ssim, y=["train_ssim"], x_label="Batches", y_label="SSIM")
+            train_ssim = [history["train_metrics"]["SSIM"][-1]]
+            new_history = pd.DataFrame({"train_ssim": train_ssim})
+            self.train_ssim.add_rows(new_history)
+        with train_columns[2]:
+            if self.train_loss is None:
+                self.df_loss = pd.DataFrame(columns=["train_loss"])
+                self.train_loss = st.line_chart(self.df_loss, y=["train_loss"], x_label="Batches", y_label="Loss")
+            train_loss = [history["train_loss"][-1]]
+            new_history = pd.DataFrame({"train_loss": train_loss})
+            self.train_loss.add_rows(new_history)
 
     def val_batch_callback(self, progress, history):
+        if self.val_columns is None:
+            self.val_columns = st.columns(3)
+        val_columns = self.val_columns
         self.val_batch_bar.progress(progress, text="Validation Batches")
-        # if self.val_columns is None:
-        #     self.val_columns = st.columns(2)
-        # val_columns = self.val_columns
-
-        # with val_columns[0]:
-        #     if self.val_psnr is None:
-        #         self.df_psnr = pd.DataFrame(columns=["val_psnr"])
-        #         self.val_psnr = st.line_chart(self.df_psnr, y=["val_psnr"], x_label="Batches", y_label="PSNR")
-        #     val_psnr = [history["val_metrics"]["PSNR"][-1]]
-        #     new_history = pd.DataFrame({"val_psnr": val_psnr})
-        #     self.val_psnr.add_rows(new_history)
-        # with val_columns[1]:
-        #     if self.val_ssim is None:
-        #         self.df_ssim = pd.DataFrame(columns=["val_ssim"])
-        #         self.val_ssim = st.line_chart(self.df_ssim, y=["val_ssim"], x_label="Batches", y_label="SSIM")
-        #     val_ssim = [history["val_metrics"]["SSIM"][-1]]
-        #     new_history = pd.DataFrame({"val_ssim": val_ssim})
-        #     self.val_ssim.add_rows(new_history)
+        with val_columns[0]:
+            if self.val_psnr is None:
+                self.df_psnr = pd.DataFrame(columns=["val_psnr"])
+                self.val_psnr = st.line_chart(self.df_psnr, y=["val_psnr"], x_label="Batches", y_label="PSNR")
+            val_psnr = [history["val_metrics"]["PSNR"][-1]]
+            new_history = pd.DataFrame({"val_psnr": val_psnr})
+            self.val_psnr.add_rows(new_history)
+        with val_columns[1]:
+            if self.val_ssim is None:
+                self.df_ssim = pd.DataFrame(columns=["val_ssim"])
+                self.val_ssim = st.line_chart(self.df_ssim, y=["val_ssim"], x_label="Batches", y_label="SSIM")
+            val_ssim = [history["val_metrics"]["SSIM"][-1]]
+            new_history = pd.DataFrame({"val_ssim": val_ssim})
+            self.val_ssim.add_rows(new_history)
+        with val_columns[2]:
+            if self.val_loss is None:
+                self.df_loss = pd.DataFrame(columns=["val_loss"])
+                self.val_loss = st.line_chart(self.df_loss, y=["val_loss"], x_label="Batches", y_label="Loss")
+            val_loss = [history["val_loss"][-1]]
+            new_history = pd.DataFrame({"val_loss": val_loss})
+            self.val_loss.add_rows(new_history)
 
     def video_loading_callback(self, progress, ):
         self.video_loading_bar.progress(progress, text="Loading Videos")
