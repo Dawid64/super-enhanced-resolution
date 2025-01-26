@@ -20,7 +20,7 @@ class MultiVideoDataset(Dataset):
         self.frames_forward = frames_forward
         self.frame_windows = np.array([])
         self.mode = mode
-        pbar = tqdm(self.video_paths, desc="Loading videos")
+        pbar = tqdm(self.video_paths, desc="Loading videos", leave=False)
         for i, video_path in enumerate(pbar):
             self.load_video(frames_backward, frames_forward, video_path)
             sleep(5)

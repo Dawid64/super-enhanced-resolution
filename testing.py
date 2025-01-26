@@ -49,4 +49,4 @@ for model in mbar:
 df = pd.DataFrame(results)
 df = df[['model'] + sorted([f'{video}_psnr' for video in testing_videos]+[f'{video}_ssim' for video in testing_videos] +
                            [f'{video}_qm' for video in testing_videos]) + ['average_psnr', 'average_ssim', 'average_qm', 'score']]
-df.to_csv("results.csv")
+df.to_csv("results.csv", mode='a', header=False, index=False)
