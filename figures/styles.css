@@ -1,0 +1,28 @@
+h1 {
+    color: linear-gradient(90deg, #ff8a00, #e52e71)
+}
+@keyframes slide {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-100%);
+    }
+}
+
+.logos {
+    overflow: hidden;
+    padding: 10px 0;
+    white-space: nowrap;
+    background-color: orange;
+}
+
+.logos-slide {
+    display: inline-block;
+    animation: 30s slide infinite linear;
+}
+
+.logos-slide img {
+ height: 30px;
+ margin: 0 10px;
+}
