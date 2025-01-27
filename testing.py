@@ -5,12 +5,13 @@ from glob import glob
 import pandas as pd
 from sklearn import base
 from tqdm import tqdm
-from qsr.predictor import Upscaler2
+from qsr.predictor import Upscaler
 
 testing_videos = [f'videos/HD/{i}.mp4' for i in range(100, 1001, 100)]
 input_res = (640, 360)
 output_res = (1280, 720)
-models = sorted([x for x in glob("fine-models/*final.pt")])
+# models = sorted([x for x in glob("fine-models/*final.pt")])
+models = ['fine-models/small_360_720_252videos_AdamWopt_PNSRloss_1fb_1ff_3ep_final.pt']
 results = {'model': models} | {f'{video}_psnr': [] for video in testing_videos} | {
     f'{video}_ssim': [] for video in testing_videos} | {f'{video}_qm': [] for video in testing_videos} | {'average_psnr': []} | {'average_ssim': []} | {'average_qm': []} | {'score': []}
 mbar = tqdm(models, total=len(models), unit='model', leave=False)
@@ -22,8 +23,8 @@ for model in mbar:
     vbar = tqdm(testing_videos, total=len(testing_videos), unit='video', leave=False)
     for video in vbar:
         print(f"Video: {video}")
-        upscaler = Upscaler2(model, original_size=output_res, target_size=input_res,
-                             listener=None, frames_backward=1, frames_forward=1, mode='test')
+        upscaler = Upscaler(model, original_size=output_res, target_size=input_res,
+                            listener=None, frames_backward=1, frames_forward=1, mode='test')
         psnr, ssim, baseline_psnr, baseline_ssim = upscaler.upscale(video)
         quality_measure = sqrt(psnr*ssim)
         baseline_quality_measure = sqrt(baseline_psnr*baseline_ssim)

@@ -11,10 +11,9 @@ wheels/
 .venv
 
 # Additional
-videos
-models
-differences
-mlruns
+videos/*
+models/*
+mlruns/*
 Inter4K/60fps/UHD
 
 *.mp4

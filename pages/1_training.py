@@ -150,7 +150,7 @@ with row_cols3[2]:
     num_epochs = st.number_input("Number of epochs", value=3)
 
 uploaded_file = st.file_uploader(
-    "Upload a FHD video (MP4/MOV)", type=["mp4", "mov"], accept_multiple_files=True)
+    "Upload training videos (MP4/MOV)", type=["mp4", "mov"], accept_multiple_files=True)
 
 start_training = st.button("Start Training")
 

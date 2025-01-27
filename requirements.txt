@@ -16,3 +16,4 @@ tqdm
 deprecated
 pytest
 snakeviz
+torchtools

@@ -4,7 +4,7 @@ import streamlit as st
 from glob import glob
 
 from qsr.utils import SimpleListener
-from qsr.predictor import Upscaler, Upscaler2
+from qsr.predictor import Upscaler
 
 st.set_page_config(layout="wide")
 st.title("Temporal Super Resolution")
@@ -74,8 +74,8 @@ if upscaling_button and uploaded_file is not None:
     listener = SRListener(progress_bar)
     input_res = (int(16/9*input_res), input_res)
     output_res = (int(16/9*output_res), output_res)
-    upscaler = Upscaler2(model_path=f"models/{model}", original_size=output_res, target_size=input_res,
-                         listener=listener, frames_backward=frames_backward, frames_forward=frames_forward, mode=mode)
+    upscaler = Upscaler(model_path=f"models/{model}", original_size=output_res, target_size=input_res,
+                        listener=listener, frames_backward=frames_backward, frames_forward=frames_forward, mode=mode)
     upscaler.upscale(tfile.name, video_path_out=output_path)
     st.success("Upscaling complete!")
     with open(output_path, "rb") as f:

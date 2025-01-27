@@ -1,0 +1,11 @@
+model,average_psnr,average_qm,score
+fine-models/large_360_720_36videos_AdamWopt_MSELossloss_1fb_1ff_3ep_final.pt,-0.9639657468603756,-0.1540986989240223,0.5
+fine-models/small_360_720_36videos_Adagradopt_MSELossloss_1fb_1ff_10ep_final.pt,-4.707400855762047,-0.7212216670811171,0.0
+fine-models/small_360_720_36videos_Adagradopt_PNSRloss_1fb_1ff_10ep_final.pt,-3.921212733991993,-0.569042394586555,0.0
+fine-models/small_360_720_36videos_AdamWopt_DSSIMloss_1fb_1ff_10ep_final.pt,-0.9494396395331254,-0.0827807494815966,0.6
+fine-models/small_360_720_36videos_AdamWopt_MSELossloss_1fb_1ff_10ep_final.pt,-1.333145386100615,-0.1252445702132305,0.4
+fine-models/small_360_720_36videos_AdamWopt_PNSRloss_1fb_1ff_10ep_final.pt,-0.700564555993816,-0.1450920521947992,0.6
+fine-models/small_360_720_36videos_SGDopt_MSELossloss_1fb_1ff_10ep_final.pt,-11.706562161285603,-1.7042404205373425,0.0
+fine-models/small_360_720_132videos_AdamWopt_DSSIMloss_1fb_1ff_10ep_final.pt,-0.6266375535286504,-0.0129201060336603,0.8
+fine-models/small_360_720_144videos_AdamWopt_PNSRloss_1fb_1ff_3ep_final.pt,0.8559439249486733,0.0846440712746297,0.9
+fine-models/small_360_720_252videos_AdamWopt_PNSRloss_1fb_1ff_3ep_final.pt,0.9597648198172554,0.1050787954034662,1.0
