@@ -51,9 +51,9 @@ class Upscaler:
 
     def upscale(self, video_file, fps=60.0, video_path_out="output.mp4"):
         writer = ffmpegcv.VideoWriterNV(file=video_path_out, codec='h264_nvenc', fps=fps, preset='p7', pix_fmt='rgb24') if self.device == 'cuda' else ffmpegcv.VideoWriter(
-            file=video_path_out, codec='h264', fps=60.0, preset='p7', pix_fmt='rgb24')
+            file=video_path_out, codec='h264', fps=60.0, preset='veryslow', pix_fmt='rgb24')
         cubic = ffmpegcv.VideoWriterNV(file="bicubic.mp4", codec='h264_nvenc', fps=fps, preset='p7', pix_fmt='rgb24') if self.device == 'cuda' else ffmpegcv.VideoWriter(
-            file="bicubic.mp4", codec='h264', fps=60.0, preset='p7', pix_fmt='rgb24')
+            file="bicubic.mp4", codec='h264', fps=60.0, preset='veryslow', pix_fmt='rgb24')
         test_dataset = self.dataset_format(video_paths=[video_file], original_size=self.original_size,
                                            target_size=self.target_size, frames_backward=self.frames_backward, frames_forward=self.frames_forward, mode='inference' if self.mode == 'inference' else 'training')
         num_frames = len(test_dataset)
