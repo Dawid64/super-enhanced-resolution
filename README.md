@@ -72,30 +72,7 @@
 
 <br>
 
-<div class="logos">
-    <div class="logos-slide">
-        <img src="./figures/logos/mlflow.png">
-        <img src="./figures/logos/numpy.png">
-        <img src="./figures/logos/pytorch.svg">
-        <img src="./figures/logos/streamlit.png">
-        <img src="./figures/logos/dvc.png">
-        <img src="./figures/logos/pandas.png">
-        <img src="./figures/logos/torchvision.png">
-        <img src="./figures/logos/opencv.png">
-        <img src="./figures/logos/ffmpeg.png">
-    </div>
-    <div class="logos-slide">
-        <img src="./figures/logos/mlflow.png">
-        <img src="./figures/logos/numpy.png">
-        <img src="./figures/logos/pytorch.svg">
-        <img src="./figures/logos/streamlit.png">
-        <img src="./figures/logos/dvc.png">
-        <img src="./figures/logos/pandas.png">
-        <img src="./figures/logos/torchvision.png">
-        <img src="./figures/logos/opencv.png">
-        <img src="./figures/logos/ffmpeg.png">
-    </div>
-</div>
+![frameworks](figures/frameworks.gif)
 
 ## <div align="center">Using the Application</div>
 
