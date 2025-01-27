@@ -13,7 +13,7 @@ Convolutional neural network for solving super resolution problem
 | GUI start point    | main.py                |
 
 ## Note 
-apart from python libraries in the requirements.txt this project requires the FFmpeg tool to run as it is a dependency of one of the python libraries \
+Apart from python libraries in the requirements.txt this project requires the FFmpeg tool to run as it is a dependency of one of the python libraries \
 [FFmpeg](https://www.ffmpeg.org/download.html)
 
 ## Running GUI
