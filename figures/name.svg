@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="252.80513mm"
+   height="23.871742mm"
+   viewBox="0 0 252.80513 23.871742"
+   version="1.1"
+   id="svg1"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <linearGradient
+       id="linearGradient23">
+      <stop
+         style="stop-color:#ff0000;stop-opacity:1"
+         offset="0"
+         id="stop23" />
+      <stop
+         style="stop-color:#0000ff;stop-opacity:1"
+         offset="1"
+         id="stop24" />
+    </linearGradient>
+    <rect
+       x="80.099991"
+       y="224.27998"
+       width="72.850845"
+       height="35.528374"
+       id="rect11" />
+    <radialGradient
+       xlink:href="#linearGradient23"
+       id="radialGradient24"
+       cx="240.81035"
+       cy="382.99844"
+       fx="240.81035"
+       fy="382.99844"
+       r="80.279297"
+       gradientTransform="matrix(-0.09702963,0.03414109,-0.03846991,-0.04307878,124.34011,242.54518)"
+       gradientUnits="userSpaceOnUse" />
+  </defs>
+  <g
+     id="layer1"
+     transform="translate(-0.26007348,-8.8996153)">
+    <text
+       xml:space="preserve"
+       transform="matrix(21.019942,0,0,27.659198,-1683.8503,-6478.5153)"
+       id="text11"
+       style="text-align:start;writing-mode:lr-tb;direction:ltr;white-space:pre;shape-inside:url(#rect11);display:inline;fill:url(#radialGradient24);fill-opacity:1;stroke-width:1.00003;stroke-dasharray:none"><tspan
+         x="80.099609"
+         y="235.22726"
+         id="tspan3"><tspan
+           style="font-weight:bold;font-size:0.93275px;font-family:Arial;-inkscape-font-specification:'Arial, Normal'"
+           id="tspan2">Temporal Super Resolution</tspan></tspan></text>
+  </g>
+</svg>

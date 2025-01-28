@@ -1,6 +1,9 @@
 <link rel="stylesheet" href="./figures/styles.css">
+
+
 <div align="center">
-  <h1 style="font-family: Arial, Helvetica, sans-serif; background: linear-gradient(to right, #f32170, #ff6b08, #cf23cf, #eedd44);-webkit-text-fill-color: transparent; -webkit-background-clip: text;">Super Enhanced Resolution</h1>
+
+  ![](figures/name.svg)
   <i>A Convolutional Neural Network for Video Upscaling and Enhancement</i>
 </div>
 
@@ -72,30 +75,7 @@
 
 <br>
 
-<div class="logos">
-    <div class="logos-slide">
-        <img src="./figures/logos/mlflow.png">
-        <img src="./figures/logos/numpy.png">
-        <img src="./figures/logos/pytorch.svg">
-        <img src="./figures/logos/streamlit.png">
-        <img src="./figures/logos/dvc.png">
-        <img src="./figures/logos/pandas.png">
-        <img src="./figures/logos/torchvision.png">
-        <img src="./figures/logos/opencv.png">
-        <img src="./figures/logos/ffmpeg.png">
-    </div>
-    <div class="logos-slide">
-        <img src="./figures/logos/mlflow.png">
-        <img src="./figures/logos/numpy.png">
-        <img src="./figures/logos/pytorch.svg">
-        <img src="./figures/logos/streamlit.png">
-        <img src="./figures/logos/dvc.png">
-        <img src="./figures/logos/pandas.png">
-        <img src="./figures/logos/torchvision.png">
-        <img src="./figures/logos/opencv.png">
-        <img src="./figures/logos/ffmpeg.png">
-    </div>
-</div>
+![frameworks](figures/frameworks.gif)
 
 ## <div align="center">Using the Application</div>
 
@@ -162,5 +142,5 @@ sh run.sh
 
 - **Model**: A temporal CNN leveraging neighboring frames to infer missing detail.  
 - **Feature Extraction**: Uses convolutional layers to detect spatial features, combined with short-term memory across frames.  
-- **Loss Functions**: MSE or L1 (configurable) to reduce pixel-level errors.  
+- **Loss Functions**: PNSR, DSSIM (configurable) to reduce pixel-level errors.  
 - **Framework**: PyTorch for the backend, Streamlit for easy UI.
