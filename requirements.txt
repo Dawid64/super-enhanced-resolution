@@ -17,3 +17,4 @@ deprecated
 pytest
 snakeviz
 torchtools
+ipykernel
