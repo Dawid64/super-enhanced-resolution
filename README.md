@@ -107,7 +107,7 @@ sh run.sh
 
 2. **Hyperparameters**  
    - Tweak `Frames back/forward`, `Batch size`, `Number of epochs`, etc.  
-   - Experiment with different `Optimizers` (`Adam`, `AdamW`, `SGD`) and `Loss` functions (`MSE`, `L1`, etc.) for best performance.
+   - Experiment with different `Optimizers` (`Adam`, `AdamW`, `SGD`) and `Loss` functions for best performance.
 
 3. **Start Training**  
    - Once you click **Start Training** in the GUI, the system will begin iterating through epochs.  
