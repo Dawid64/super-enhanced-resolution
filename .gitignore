@@ -16,7 +16,6 @@ models/*
 mlruns/*
 Inter4K/60fps/UHD
 
-*.mp4
 
 !models/*large_360_720_36videos_AdamWopt_MSELossloss_1fb_1ff_3ep_final.pt
 !models/small_360_720_36videos_Adagradopt_MSELossloss_1fb_1ff_10ep_final.pt
