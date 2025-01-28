@@ -1,17 +1,15 @@
 from math import sqrt
 import numpy as np
 from numpy import average
-from glob import glob
 import pandas as pd
-from sklearn import base
 from tqdm import tqdm
 from qsr.predictor import Upscaler
+from glob import glob
 
 testing_videos = [f'videos/HD/{i}.mp4' for i in range(100, 1001, 100)]
 input_res = (640, 360)
 output_res = (1280, 720)
-# models = sorted([x for x in glob("fine-models/*final.pt")])
-models = ['fine-models/small_360_720_252videos_AdamWopt_PNSRloss_1fb_1ff_3ep_final.pt']
+models = sorted([x for x in glob("fine-models/*final.pt")])
 results = {'model': models} | {f'{video}_psnr': [] for video in testing_videos} | {
     f'{video}_ssim': [] for video in testing_videos} | {f'{video}_qm': [] for video in testing_videos} | {'average_psnr': []} | {'average_ssim': []} | {'average_qm': []} | {'score': []}
 mbar = tqdm(models, total=len(models), unit='model', leave=False)
