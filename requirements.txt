@@ -16,5 +16,5 @@ tqdm
 deprecated
 pytest
 snakeviz
-torchtools
+torch-print-summary
 ipykernel
