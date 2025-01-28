@@ -74,6 +74,8 @@ if upscaling_button and uploaded_file is not None:
     listener = SRListener(progress_bar)
     input_res = (int(16/9*input_res), input_res)
     output_res = (int(16/9*output_res), output_res)
+    if mode == "inference":
+        listener = None
     upscaler = Upscaler(model_path=f"models/{model}", original_size=output_res, target_size=input_res,
                         listener=listener, frames_backward=frames_backward, frames_forward=frames_forward, mode=mode)
     upscaler.upscale(tfile.name, video_path_out=output_path)
