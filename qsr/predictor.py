@@ -95,8 +95,8 @@ class Upscaler:
         else:
             for i, (prev_frames, low_res_frame, next_frames) in enumerate(test_pbar):
                 if self.listener is not None:
-                    self.listener.test_batch_callback((i+1)/len(test_loader), None)
-                pred_frame = self.upscale_batch(prev_frames, low_res_frame, next_frames, high_res_frame)
+                    self.listener.upscale_callback((i+1)/len(test_loader))
+                pred_frame = self.upscale_batch(prev_frames, low_res_frame, next_frames)
                 cubic_frame = nn.functional.interpolate(low_res_frame, self.original_size[::-1], mode='bicubic')
                 cubic_frame = (np.clip(cubic_frame.squeeze(0).permute(1, 2, 0).cpu().numpy(), 0, 1)*255).astype(np.uint8)
                 cubic.write(cubic_frame)
