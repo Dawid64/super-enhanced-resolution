@@ -81,6 +81,8 @@
 
 1. **Install Dependencies**
 
+Note: FFmpeg needs to be installed on the system.
+
 ```sh
 pip install -r requirements.txt
 ```
