@@ -92,6 +92,13 @@ class Upscaler:
                 out = np.clip(out, 0, 1)
                 out = (out * 255).astype(np.uint8)
                 writer.write(out)
+                if i == 60:
+                    low_res_frame = (np.clip(low_res_frame.squeeze(0).permute(1, 2, 0).cpu().numpy(), 0, 1)*255).astype(np.uint8)
+                    high_res_frame = (np.clip(high_res_frame.squeeze(0).permute(1, 2, 0).cpu().numpy(), 0, 1)*255).astype(np.uint8)
+                    cv2.imwrite("low_res_frame.png", cv2.cvtColor(low_res_frame, cv2.COLOR_RGB2BGR))
+                    cv2.imwrite("cubic frame.png", cv2.cvtColor(cubic_frame, cv2.COLOR_RGB2BGR))
+                    cv2.imwrite("pred_frame.png", cv2.cvtColor(out, cv2.COLOR_RGB2BGR))
+                    cv2.imwrite("high_res_frame.png", cv2.cvtColor(high_res_frame, cv2.COLOR_RGB2BGR))
         else:
             for i, (prev_frames, low_res_frame, next_frames) in enumerate(test_pbar):
                 if self.listener is not None:

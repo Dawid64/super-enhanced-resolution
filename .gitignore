@@ -26,3 +26,6 @@ dvc.json
 !models/small_360_720_144videos_AdamWopt_DSSIMloss_1fb_1ff_10ep_final.pt
 !models/small_360_720_144videos_AdamWopt_PNSRloss_1fb_1ff_3ep_final.pt
 !models/small_360_720_252videos_AdamWopt_PNSRloss_1fb_1ff_3ep_final.pt
+
+/*.mp4
+/*.png
